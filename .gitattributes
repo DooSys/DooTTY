@@ -1,3 +1,5 @@
 * text=auto eol=lf
 *.png binary
 *.ico binary
+# Preserve the exact whitespace of upstream legal notices when regrouping them.
+THIRD_PARTY_NOTICES.txt whitespace=-blank-at-eol

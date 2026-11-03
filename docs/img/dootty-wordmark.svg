@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="280" height="76" viewBox="0 0 280 76" role="img" aria-labelledby="title">
+  <title id="title">DooTTY</title>
+  <defs>
+    <linearGradient id="tty-blue" x1="120" y1="14" x2="260" y2="66" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#00e5ec"/>
+      <stop offset="0.5" stop-color="#00bce9"/>
+      <stop offset="1" stop-color="#008cef"/>
+    </linearGradient>
+  </defs>
+  <style>
+    .name { fill: #202b3d; }
+    @media (prefers-color-scheme: dark) {
+      .name { fill: #f1f5fb; }
+    }
+  </style>
+  <text class="name" x="7" y="60" font-family="Arial, Helvetica, sans-serif" font-size="64" font-weight="900" font-style="italic" letter-spacing="-2" textLength="254" lengthAdjust="spacingAndGlyphs">Doo<tspan fill="url(#tty-blue)">TTY</tspan></text>
+</svg>

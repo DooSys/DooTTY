@@ -62,7 +62,7 @@ export function initializeMonitoring(options: { native: boolean; target: () => T
         const x=240*(point.at-now+HISTORY_MS)/HISTORY_MS, y=46-44*Math.min(1,value/max);
         d+=`${previousAt && point.at-previousAt<8000?'L':'M'}${x.toFixed(1)},${y.toFixed(1)} `; previousAt=point.at;
       }
-      const path=document.createElementNS(svg.namespaceURI,'path'); path.setAttribute('d',d); path.setAttribute('fill','none'); path.setAttribute('stroke',index?'#b29cff':'#65c9eb'); path.setAttribute('stroke-width','1.5'); svg.append(path);
+      const path=document.createElementNS(svg.namespaceURI,'path'); path.setAttribute('d',d); path.setAttribute('fill','none'); path.setAttribute('stroke',index?'var(--graph-secondary, #b29cff)':'var(--graph-primary, #65c9eb)'); path.setAttribute('stroke-width','1.5'); svg.append(path);
     }
   }
   function render(): void {

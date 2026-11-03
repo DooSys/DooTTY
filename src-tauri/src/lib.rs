@@ -5,4 +5,5 @@ pub mod management;
 pub mod monitor;
 pub mod paths;
 pub mod session;
+pub mod storage;
 pub mod updates;

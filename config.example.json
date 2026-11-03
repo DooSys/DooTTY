@@ -9,7 +9,8 @@
     "theme": "campbell",
     "cursorStyle": "bar",
     "cursorBlink": true,
-    "scrollback": 10000
+    "scrollback": 10000,
+    "uiTheme": "dark"
   },
   "interaction": {
     "copyOnSelect": false,

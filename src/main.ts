@@ -7,6 +7,7 @@ import { InputQueue } from "./transport";
 import {
   defaults,
   themes,
+  terminalTheme,
   formatBytes,
   type Config,
   type Distribution,
@@ -37,6 +38,7 @@ let nextTab = 0;
 let settingsButton: HTMLElement | null = null;
 let distributions: Distribution[] = [];
 let dirty = false;
+let savingConfig = false;
 const tabs: TerminalTab[] = [];
 const encoder = new TextEncoder();
 let monitoring: ReturnType<typeof initializeMonitoring> | undefined;
@@ -126,7 +128,9 @@ function makeTab(
     image.alt = "";
     image.className = "tab-logo";
     mark.append(image);
-  } else mark.textContent = icon;
+  } else {
+    mark.append(el("settings-toggle").querySelector("svg")!.cloneNode(true));
+  }
   const label = document.createElement("span");
   label.className = "tab-title";
   label.textContent = title;
@@ -167,6 +171,7 @@ class TerminalTab {
   expectedStop = false;
   rectangularSelection = false;
   private generation = 0;
+  private hasShellTitle = false;
   private input: InputQueue | null = null;
   private pendingSize: { id: number; cols: number; rows: number } | null = null;
   private resizing = false;
@@ -214,6 +219,10 @@ class TerminalTab {
         );
     });
     this.terminal.onTitleChange((title) => {
+      // ConPTY can announce wsl.exe before Linux sends its own OSC title.
+      // Keep the distro label during that handover; do not delay shell startup.
+      if (!this.hasShellTitle && /^[a-z]:[\\/](?:[^\\/\r\n]+[\\/])*(?:system32|sysnative)[\\/]wsl\.exe(?:\s.*)?$/i.test(title.trim())) return;
+      if (title) this.hasShellTitle = true;
       delete this.select.dataset.i18nTitle;
       this.title.textContent = title || this.profile.distribution;
       this.select.title = title || this.profile.distribution;
@@ -251,12 +260,13 @@ class TerminalTab {
     this.terminal.options.fontSize = appearance.fontSize;
     this.terminal.options.cursorStyle = appearance.cursorStyle;
     this.terminal.options.cursorBlink = appearance.cursorBlink;
-    this.terminal.options.theme = themes[appearance.theme];
-    this.pane.style.setProperty(
-      "--terminal-background",
-      themes[appearance.theme].background!,
-    );
+    this.applyTheme();
     this.resize();
+  }
+  applyTheme(): void {
+    const theme = terminalTheme(config.appearance);
+    this.terminal.options.theme = theme;
+    this.pane.style.setProperty("--terminal-background", theme.background!);
   }
   resize(): void {
     if (this.closed || activeKey !== this.key || this.pane.hidden) return;
@@ -297,6 +307,7 @@ class TerminalTab {
   async start(): Promise<void> {
     if (this.connecting || this.sessionId !== null || this.closed) return;
     this.expectedStop = false;
+    this.hasShellTitle = false;
     this.connecting = true;
     const generation = ++this.generation;
     this.button.dataset.state = "connecting";
@@ -527,7 +538,7 @@ function readDraft(): Config {
     username: field("username").value.trim() || null,
     directory: field("directory").value.trim(),
     appearance: {
-      fontFamily: field("font").value.trim(),
+      uiTheme: field("ui-theme").checked ? "light" : "dark",      fontFamily: field("font").value.trim(),
       fontSize: Number(field("font-size").value),
       theme: field("theme").value,
       cursorStyle: el<HTMLSelectElement>("config-cursor")
@@ -556,6 +567,7 @@ function loadFields(): void {
   updateDistributionChoices(config.distribution);
   field("username").value = config.username ?? "";
   field("directory").value = config.directory;
+  field("ui-theme").checked = config.appearance.uiTheme === "light";
   populateFonts(config.appearance.fontFamily);
   field("font-size").value = String(config.appearance.fontSize);
   field("theme").value = config.appearance.theme;
@@ -579,11 +591,12 @@ function updateDraft(): void {
   dirty = JSON.stringify(draft) !== JSON.stringify(config);
   if (dirty) setText(el("save-status"), "settings.unsaved");
   else { el("save-status").removeAttribute("data-i18n"); el("save-status").textContent = ""; }
-  el<HTMLButtonElement>("save-settings").disabled = !dirty;
+  el<HTMLButtonElement>("save-settings").disabled = !dirty || savingConfig;
   el<HTMLButtonElement>("discard-settings").disabled = !dirty;
   el<HTMLButtonElement>("open-wsl-settings").disabled =
     draft.wslSettingsPath !== config.wslSettingsPath;
-  const theme = themes[draft.appearance.theme] ?? themes.campbell;
+  applyInterfaceTheme(draft.appearance.uiTheme);
+  const theme = terminalTheme(draft.appearance);
   const preview = el("appearance-preview");
   preview.style.backgroundColor = theme.background!;
   preview.style.color = theme.foreground!;
@@ -602,6 +615,7 @@ function updateDraft(): void {
 }
 function settingsPage(page: string): void {
   if (page === "management" || page === "installation") run(wslManagement.refresh());
+  if (page === "installation") wslManagement.visitInstallation();
   el("wsl-operation-output").hidden = !["management", "installation"].includes(page) || !el("wsl-operation-state").dataset.state;
   document
     .querySelectorAll<HTMLElement>("[data-section]")
@@ -622,7 +636,7 @@ function openSettings(): void {
     settingsButton = makeTab(
       "settings",
       t("common.settings"),
-      "⚙",
+      "",
       closeSettings,
     ).button;
     settingsButton.classList.add("settings-tab");
@@ -655,6 +669,7 @@ function requestWindowClose(): void {
   } else run(invoke("confirm_close_window"));
 }
 async function saveSettings(): Promise<void> {
+  if (savingConfig) return;
   const form = el<HTMLFormElement>("settings-form");
   const invalid = form.querySelector<HTMLInputElement>(":invalid");
   if (invalid) {
@@ -665,6 +680,8 @@ async function saveSettings(): Promise<void> {
     return;
   }
   const draft = readDraft();
+  savingConfig = true;
+  el<HTMLButtonElement>("theme-toggle").disabled = true;
   el<HTMLButtonElement>("save-settings").disabled = true;
   try {
     if (!native)
@@ -680,6 +697,10 @@ async function saveSettings(): Promise<void> {
   } catch (error) {
     showError(error);
     updateDraft();
+  } finally {
+    savingConfig = false;
+    el<HTMLButtonElement>("theme-toggle").disabled = false;
+    el<HTMLButtonElement>("save-settings").disabled = !dirty;
   }
 }
 function updateDistributionChoices(selected: string): void {
@@ -995,6 +1016,10 @@ const wslManagement = initializeWslManagement({
     updateActions();
     return () => { affected.forEach((tab, index) => { tab.expectedStop = previous[index]; }); updateActions(); };
   },
+  prepareRestartAll: () => {
+    const active = tabs.filter(tab => !tab.closed && (tab.sessionId !== null || tab.connecting));
+    return async () => { for (const tab of active) if (!tab.closed) await tab.restart(); };
+  },
   restart: async distribution => {
     let targets = tabs.filter(tab => !tab.closed && tab.profile.distribution === distribution);
     if (!targets.length) {
@@ -1130,7 +1155,7 @@ if (native) {
   const window = getCurrentWindow();
   // Mouse use of the title bar keeps typing in the current terminal or form.
   // Keyboard navigation can still focus and activate these buttons normally.
-  for (const button of document.querySelectorAll<HTMLButtonElement>(".window-controls button")) {
+  for (const button of document.querySelectorAll<HTMLButtonElement>(".window-controls button, #theme-toggle")) {
     button.addEventListener("pointerdown", event => {
       if (event.button === 0) event.preventDefault();
     });
@@ -1140,11 +1165,41 @@ if (native) {
   el("close-window").onclick = requestWindowClose;
   run(listen("close-window-requested", requestWindowClose));
 }
+function applyInterfaceTheme(mode: "dark" | "light"): void {
+  document.documentElement.dataset.theme = mode;
+  setText(el("interface-theme-state"), mode === "light" ? "appearance.light" : "appearance.dark");
+  const button = el("theme-toggle");
+  const key = mode === "light" ? "appearance.switchDark" : "appearance.switchLight";
+  button.dataset.i18nAriaLabel = key;
+  button.dataset.i18nTitle = key;
+  button.setAttribute("aria-label", t(key));
+  button.setAttribute("title", t(key));
+  button.setAttribute("aria-pressed", String(mode === "light"));
+}
+el("theme-toggle").onclick = () => run((async () => {
+  const button = el<HTMLButtonElement>("theme-toggle");
+  if (!booted || savingConfig) return;
+  savingConfig = true;
+  button.disabled = true;
+  el<HTMLButtonElement>("save-settings").disabled = true;
+  try {
+    const uiTheme = document.documentElement.dataset.theme === "light" ? "dark" : "light";
+    // Save only the quick toggle; keep any other unsaved form edits pending.
+    const next: Config = { ...config, appearance: { ...config.appearance, uiTheme } };
+    config = native ? await invoke<Config>("save_config", { config: next }) : next;
+    field("ui-theme").checked = config.appearance.uiTheme === "light";
+      updateDraft();
+  } finally {
+    savingConfig = false;
+    button.disabled = false;
+    el<HTMLButtonElement>("save-settings").disabled = !dirty;
+  }
+})());
 async function boot(): Promise<void> {
   try {
     if (native) {
       const saved = await invoke<Config>("session_config");
-      config = { ...defaults, ...saved, interaction: { ...defaults.interaction, ...saved.interaction } };
+      config = { ...defaults, ...saved, appearance: { ...defaults.appearance, ...saved.appearance }, interaction: { ...defaults.interaction, ...saved.interaction } };
     }
   } catch (error) {
     showError(error);

@@ -9,6 +9,7 @@ fn customized() -> Config {
     config.distribution = "Ubuntu Test".into();
     config.username = Some("developer".into());
     config.directory = "/home/developer/my workspace".into();
+    config.appearance.ui_theme = "light".into();
     config.appearance.font_family = "JetBrains Mono, monospace".into();
     config.appearance.font_size = 18;
     config.appearance.theme = "solarizedDark".into();
@@ -31,7 +32,16 @@ fn settings_process() {
     let Ok(directory) = std::env::var("DOOTTY_PERSISTENCE_TEST_DIRECTORY") else {
         return;
     };
-    let file = PathBuf::from(directory).join("config.json");
+    let root = PathBuf::from(directory);
+    let file = if std::env::var_os("DOOTTY_TEST_PORTABLE").is_some() {
+        let layout =
+            dootty::storage::Layout::resolve(&root.join("DooTTY.exe"), None, None).unwrap();
+        assert!(layout.portable);
+        layout.prepare().unwrap();
+        layout.config
+    } else {
+        root.join("config.json")
+    };
     match std::env::var("DOOTTY_PERSISTENCE_TEST_MODE")
         .unwrap()
         .as_str()
@@ -90,4 +100,31 @@ fn reopening_a_fresh_process_restores_every_saved_preference() {
         1,
         "No temporary configuration file left behind"
     );
+}
+
+#[test]
+fn portable_reopening_preserves_settings_without_profile_directories() {
+    let root = std::env::temp_dir().join(format!("dootty-portable-reopen-{}", std::process::id()));
+    std::fs::create_dir_all(&root).unwrap();
+    std::fs::write(root.join(dootty::storage::PORTABLE_MARKER), b"1").unwrap();
+    for mode in ["save", "reopen", "reopen"] {
+        let child = Command::new(std::env::current_exe().unwrap())
+            .args(["--exact", "settings_process", "--nocapture"])
+            .env("DOOTTY_PERSISTENCE_TEST_DIRECTORY", &root)
+            .env("DOOTTY_PERSISTENCE_TEST_MODE", mode)
+            .env("DOOTTY_TEST_PORTABLE", "1")
+            .env_remove("APPDATA")
+            .env_remove("LOCALAPPDATA")
+            .output()
+            .unwrap();
+        assert!(
+            child.status.success(),
+            "{}",
+            String::from_utf8_lossy(&child.stdout)
+        );
+    }
+    assert!(!root.join("config.json").exists());
+    assert!(root.join("data/config.json").is_file());
+    assert!(root.join("data/webview2").is_dir());
+    std::fs::remove_dir_all(root).unwrap();
 }

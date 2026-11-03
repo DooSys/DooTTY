@@ -7,14 +7,12 @@ d’ensemble, consultez la [présentation du projet](../README.md).
 
 ## Utilisation
 
-Copiez `DooTTY.exe` dans un dossier Windows puis lancez-le. Aucun outil de
-compilation n'est nécessaire pour utiliser l'application. Prérequis : Windows 11
-x64, WSL, une distribution Linux et le runtime Microsoft WebView2.
-
-Cette version est livrée sans installateur. Ses préférences sont conservées dans
-le profil Windows : elle n'utilise pas encore un fichier de configuration à côté
-de l'EXE. Le choix d'un installateur et d'un véritable mode portable est décrit
-dans les [options de distribution](distribution.md).
+Lancez `DooTTY-<version>-setup.exe` et choisissez **Installer pour moi** ou
+**Portable**. Le premier mode ajoute un raccourci Démarrer et une entrée de
+désinstallation Windows. Le second demande simplement un dossier accessible
+en écriture et y réunit l’application, ses licences et ses données dans `data`.
+Prérequis : Windows 11 x64, WSL, une distribution Linux et Microsoft WebView2.
+Voir les [modes de distribution](distribution.md).
 
 Le binaire n'est pas signé. Un avertissement SmartScreen peut apparaître ; un
 lancement depuis un partage UNC peut aussi produire un avertissement d'ouverture.
@@ -22,11 +20,14 @@ Utiliser un dossier Windows local permet de distinguer l'effet de l'emplacement.
 
 ## Réglages et réouverture
 
-Les préférences sont enregistrées après **Enregistrer**, dans :
+Les préférences sont enregistrées après **Enregistrer**. En mode installé :
 
 ```text
 %APPDATA%\DooTTY\config.json
 ```
+
+En mode portable : `data\config.json`, à côté de `DooTTY.exe`. Le cache
+WebView2 est lui aussi dans `data`. Conservez ce dossier lors des mises à jour.
 
 Au lancement, ce fichier est lu et validé avant la création du premier terminal.
 La langue, le profil, l'apparence, le monitoring et les options d'interaction sont
@@ -78,9 +79,12 @@ récente. Elle lance `wsl.exe --update --web-download` après confirmation. En c
 d'échec, une reprise administrateur explicite peut déclencher l'UAC pour cette
 seule commande fixe ; DooTTY et ses terminaux gardent leurs droits habituels.
 
-**Arrêter WSL** lance `wsl.exe --shutdown`, sans relance demandée par DooTTY.
-**Redémarrer** sur une distribution réalise un arrêt ciblé puis relance ses
-terminaux DooTTY. L'arrêt global peut interrompre les autres applications utilisant WSL.
+**Relancer WSL** lance `wsl.exe --shutdown`, puis redémarre les distributions
+qui étaient actives. S’il n’y en avait aucune, seule la distribution par défaut
+est démarrée. Les terminaux DooTTY qui étaient ouverts sont reconnectés ; les
+commandes qui y tournaient ne sont pas reprises. **Redémarrer** sur une distribution
+réalise un arrêt ciblé puis relance ses terminaux DooTTY. Ces opérations interrompent
+les sessions et services concernés, y compris ceux d’autres applications.
 Les sondes sont coordonnées avec les arrêts internes et vérifient l'état courant
 avant de démarrer. Un arrêt lancé à l'extérieur n'utilise pas ce verrou ; les
 courses entre applications et les relances par d'autres clients restent à tester
@@ -105,3 +109,18 @@ d'import/export sont des chemins Windows absolus sur un disque local.
 
 Ctrl+C, Ctrl+D, Ctrl+Z et AltGr restent transmis au terminal. Dans les applications
 qui demandent la souris, Maj permet de forcer la sélection locale ou le collage au clic droit.
+
+## Thème de l’application
+
+Le bouton soleil/lune à droite de la roue crantée change le thème et conserve ce
+choix à la réouverture. **Apparence → Thème de l’application** propose le même
+réglage, avec aperçu et enregistrement via **Enregistrer**. Le thème sombre reste
+la valeur initiale. Ce choix concerne uniquement l’interface : le jeu de couleurs
+du terminal est conservé. Il est possible d’utiliser une interface claire avec une
+console sombre, et inversement, depuis **Apparence → Jeux de couleurs**.
+
+Le catalogue d’**Installation et sauvegarde**, marqué Bêta, se synchronise au premier
+accès à la page. La double flèche force une nouvelle lecture de `wsl.exe --list --online`.
+La date indique la dernière synchronisation réussie. Le champ du catalogue est une
+liste de sélection ; les distributions déjà installées en sont retirées. En cas d’échec,
+la dernière liste valide reste disponible avec sa date et un message d’erreur.

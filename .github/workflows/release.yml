@@ -1,0 +1,56 @@
+name: Prepare Windows release
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '26.13.0'
+          cache: npm
+      - name: Verify Rust MSVC toolchain
+        run: rustup show
+      - run: npm install --global npm@12.2.1
+      - name: Match the release tag to the project version
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          if ($env:GITHUB_REF_NAME -cne "v$version") { throw 'Release tag and project version differ' }
+      - run: npm ci
+      - run: npm run check:public
+      - run: npm audit --audit-level=moderate
+      - run: npm run check:translations
+      - run: npm test
+      - name: Rust tests
+        run: cargo test --locked --manifest-path src-tauri/Cargo.toml
+      - name: Build DooTTY.exe
+        run: npm run build:windows
+      - name: Install NSIS 3.11
+        run: choco upgrade nsis.install --version=3.11.0 --allow-downgrade --yes --no-progress
+      - name: Build installer
+        run: npm run build:installer
+      - name: Test installation and portable extraction
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          ./scripts/smoke-installer.ps1 -Setup ".local/releases/$version/DooTTY-$version-setup.exe"
+      - name: Create draft release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $asset = ".local/releases/$version/DooTTY-$version-setup.exe"
+          gh release create "$env:GITHUB_REF_NAME" "$asset" --draft --verify-tag --title "DooTTY $version" --generate-notes
+          if ($LASTEXITCODE -ne 0) { throw 'Draft release creation failed' }

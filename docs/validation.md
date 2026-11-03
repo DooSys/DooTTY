@@ -49,7 +49,7 @@ reçoit pas de nouvelle sonde. Ils ne remplacent pas les essais ConPTY sous Wind
 | Dossier du profil | Domicile habituel, utilisateur root et répertoire personnalisé avec espaces |
 | Versions | Premier accès aux paramètres, cache pendant la session, synchronisation forcée |
 | Arrêt | Arrêt interne, puis arrêt externe ; vérifier les éventuelles relances par d'autres clients |
-| Gestion Bêta | Catalogue ; import/export/installation uniquement sur des données de test choisies |
+| Installation et sauvegarde | Catalogue ; import/export/installation uniquement sur des données de test choisies |
 | UAC | Confirmation, annulation et résultat de la reprise administrateur d'une mise à jour |
 
 Les tests navigateur de développement simulent les appels natifs ; leur mémoire

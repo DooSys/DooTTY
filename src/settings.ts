@@ -1,6 +1,7 @@
 import type { ITheme } from "@xterm/xterm";
 import { t, currentLanguage } from "./i18n";
 export type Appearance = {
+  uiTheme: "dark" | "light";
   fontFamily: string;
   fontSize: number;
   theme: string;
@@ -49,7 +50,7 @@ export const defaults: Config = {
   username: null,
   directory: "~",
   appearance: {
-    fontFamily: "Cascadia Mono, Consolas, monospace",
+    uiTheme: "dark",    fontFamily: "Cascadia Mono, Consolas, monospace",
     fontSize: 14,
     theme: "campbell",
     cursorStyle: "bar",
@@ -186,4 +187,9 @@ export function formatBytes(bytes: number | null): string {
     index++;
   }
   return `${value.toLocaleString(currentLanguage(), { maximumFractionDigits: 2 })} ${t(units[index])}`;
+}
+
+/** App chrome and console palettes are independent preferences. */
+export function terminalTheme(appearance: Pick<Appearance, "theme">): ITheme {
+  return themes[appearance.theme] ?? themes.campbell;
 }

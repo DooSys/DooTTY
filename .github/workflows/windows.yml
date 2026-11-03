@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+    # Pull requests build and test only; release credentials are never used.
 
 permissions:
   contents: read
@@ -13,6 +14,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '26.13.0'
@@ -29,12 +32,19 @@ jobs:
         run: cargo test --locked --manifest-path src-tauri/Cargo.toml
       - name: Build DooTTY.exe
         run: npm run build:windows
-      - name: Package executable and licenses
-        run: python scripts/package-test.py --binary src-tauri/target/release/DooTTY.exe
+      - name: Install NSIS 3.11
+        run: choco upgrade nsis.install --version=3.11.0 --allow-downgrade --yes --no-progress
+      - name: Build installer
+        run: npm run build:installer
+      - name: Test installation and portable extraction
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          ./scripts/smoke-installer.ps1 -Setup ".local/releases/$version/DooTTY-$version-setup.exe"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: DooTTY-Windows-x64
-          path: .local/releases/*/DooTTY-*-windows-x64.zip
-          # The explicit ZIP glob is intentional; never upload the whole .local directory.
+          path: .local/releases/*/DooTTY-*-setup.exe
+          # Upload only the final installer, never the whole .local directory.
           include-hidden-files: true
           if-no-files-found: error

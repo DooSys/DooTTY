@@ -2,21 +2,20 @@ import { Channel, invoke } from "@tauri-apps/api/core";
 import type { Distribution } from "./settings";
 import { closeSelects, refreshSelect } from "./select";
 import { distributionIcon } from "./distribution-icons";
-import { t, setText, onLanguageChanged } from "./i18n";
+import { t, setText, onLanguageChanged, currentLanguage } from "./i18n";
 import { initializeWslUpdates } from "./wsl-updates";
 import { OutputDecoder } from "./output-decoder";
 import { singleFlight } from "./resources";
 
 type Action =
-  | { action: "listOnline" | "update" | "shutdown" }
+  | { action: "update" | "restart" }
   | { action: "terminate" | "setDefault"; distribution: string }
   | { action: "export"; distribution: string; path: string }
   | { action: "import"; name: string; path: string; location: string }
   | { action: "install"; name: string };
-type Output = { kind: "data"; stream: "stdout" | "stderr"; bytes: number[]; truncated: boolean } | { kind: "complete" };
+type Output = { kind: "data"; stream: "stdout" | "stderr"; bytes: number[]; truncated: boolean } | { kind: "complete" } | { kind: "note"; text: string };
 const element = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const value = (id: string) => element<HTMLInputElement>(id).value.trim();
-const readOnly = new Set(["listOnline"]);
 
 export function initializeWslManagement(options: {
   native: boolean;
@@ -25,21 +24,31 @@ export function initializeWslManagement(options: {
   launch: (distribution: string) => void;
   prepareStop: (distribution: string | null) => () => void;
   restart: (distribution: string) => Promise<void>;
+  prepareRestartAll: () => () => Promise<void>;
   error: (error: unknown) => void;
-}): { refresh: () => Promise<void>; visit: () => void } {
+}): { refresh: () => Promise<void>; visit: () => void; visitInstallation: () => void } {
   let busy = false;
+  let catalogueChecking = false;
+  let catalogueVisited = false;
+  let catalogue: { name: string; label: string }[] = [];
+  let catalogueDate: Date | null = null;
+  let catalogueError: string | null = null;
   let running: Set<string> | null = null;
   let pending: (() => void) | null = null;
   let adminRetry = false;
   const dialog = element<HTMLDialogElement>("wsl-action-dialog");
   const state = element("wsl-operation-state");
   const log = element("wsl-operation-log");
-  const updates = initializeWslUpdates({ native: options.native, isBusy: () => busy, error: options.error });
+  const updates = initializeWslUpdates({ native: options.native, isBusy: () => busy || catalogueChecking, error: options.error });
 
   function disabled(): void {
     document.querySelectorAll<HTMLButtonElement>('[data-section="management"] button, [data-section="installation"] button').forEach(button => {
-      button.disabled = busy || !options.native;
+      button.disabled = busy || catalogueChecking || !options.native;
     });
+    const install = element<HTMLSelectElement>("wsl-install-name");
+    install.disabled = busy || catalogueChecking || !options.native || !install.value;
+    element<HTMLButtonElement>("wsl-install").disabled ||= !install.value;
+    refreshSelect(install.id);
     updates.refreshControls();
     element<HTMLButtonElement>("wsl-admin-retry").hidden = !adminRetry;
   }
@@ -88,6 +97,7 @@ export function initializeWslManagement(options: {
     }
     if (Array.from(select.options).some(option => option.value === selected)) select.value = selected;
     refreshSelect(select.id);
+    renderCatalogue();
     disabled();
   }
 
@@ -112,15 +122,50 @@ export function initializeWslManagement(options: {
   }
   const refresh = singleFlight(loadOverview);
 
+  function renderCatalogue(): void {
+    const select = element<HTMLSelectElement>("wsl-install-name");
+    const selected = select.value;
+    const available = catalogue.filter(entry => !options.distributions().some(d => d.name.toLowerCase() === entry.name.toLowerCase()));
+    select.replaceChildren(...available.map(entry => new Option(`${entry.label} · ${entry.name}`, entry.name)));
+    if (!available.length) select.add(new Option(t(catalogueChecking ? "management.catalogChecking" : catalogueDate ? "management.catalogEmpty" : "management.catalogUnchecked"), ""));
+    else if (available.some(entry => entry.name === selected)) select.value = selected;
+    const date = element("wsl-catalogue-date");
+    if (catalogueChecking) setText(date, "management.catalogChecking");
+    else if (catalogueDate) setText(date, "management.catalogSyncedAt", { date: catalogueDate.toLocaleString(currentLanguage()) });
+    else setText(date, options.native ? "management.catalogUnchecked" : "management.catalogUnavailable");
+    const button = element("wsl-catalogue-refresh");
+    button.classList.toggle("syncing", catalogueChecking);
+    button.setAttribute("aria-busy", String(catalogueChecking));
+    element("wsl-catalogue-error").hidden = !catalogueError;
+    if (catalogueError) setText(element("wsl-catalogue-error"), "management.catalogError", { error: catalogueError });
+    disabled();
+  }
+  async function syncCatalogue(): Promise<void> {
+    if (!options.native || busy || catalogueChecking) return;
+    catalogueVisited = true;
+    catalogueChecking = true;
+    catalogueError = null;
+    renderCatalogue();
+    try {
+      const fresh = await invoke<{ name: string; label: string }[]>("wsl_online_catalogue");
+      if (!Array.isArray(fresh) || !fresh.length || fresh.some(entry => !entry.name || !entry.label)) throw new Error(t("management.catalogEmpty"));
+      catalogue = fresh;
+      catalogueDate = new Date();
+    } catch (error) { catalogueError = String(error); }
+    finally { catalogueChecking = false; renderCatalogue(); }
+  }
+  element("wsl-catalogue-refresh").onclick = () => { void syncCatalogue(); };
+  element("wsl-install-name").addEventListener("change", disabled);
+
   async function execute(request: Action, command: string, restart: boolean, elevated = false): Promise<void> {
-    if (busy) return;
+    if (busy || catalogueChecking) return;
     adminRetry = false;
     busy = true; disabled();
     setText(state, "management.operationRunning");
     element("wsl-operation-output").hidden = false;
     log.removeAttribute("data-i18n");
     state.dataset.state = "running";
-    const streams = {stdout:"", stderr:""};
+    const streams = {stdout:"", stderr:"", notes:""};
     const decoders = { stdout: new OutputDecoder(), stderr: new OutputDecoder() };
     let outputFrame = 0;
     let completed!: () => void;
@@ -129,10 +174,12 @@ export function initializeWslManagement(options: {
     const output = new Channel<Output>();
     const draw = () => {
       log.textContent = command + "\n\n" + streams.stdout + (streams.stderr ? "\n" + streams.stderr : "")
+        + streams.notes
         + (truncated ? "\n" + t("management.outputLimited") : "");
       log.scrollTop = log.scrollHeight;
     };
     output.onmessage = message => {
+      if (message.kind === "note") { streams.notes += message.text; draw(); return; }
       if (message.kind === "complete") {
         streams.stdout += decoders.stdout.decode([], true);
         streams.stderr += decoders.stderr.decode([], true);
@@ -144,7 +191,8 @@ export function initializeWslManagement(options: {
     };
     draw();
     log.scrollIntoView({ block: "nearest", behavior: "smooth" });
-    const restoreStop = request.action === "shutdown"
+    const resumeAll = request.action === "restart" ? options.prepareRestartAll() : undefined;
+    const restoreStop = request.action === "restart"
       ? options.prepareStop(null)
       : request.action === "terminate" ? options.prepareStop(request.distribution) : undefined;
     try {
@@ -158,9 +206,10 @@ export function initializeWslManagement(options: {
         log.textContent += "\n" + t("management.relaunching");
         await options.restart(request.distribution);
       }
+      if (resumeAll) await resumeAll();
       setText(state, "management.completed");
       state.dataset.state = "success";
-      if (!streams.stdout && !streams.stderr) log.textContent += "\n" + t("management.noOutput");
+      if (!streams.stdout && !streams.stderr && !streams.notes) log.textContent += "\n" + t("management.noOutput");
     } catch (error) {
       adminRetry = request.action === "update" && !elevated;
       cancelAnimationFrame(outputFrame); outputFrame = 0;
@@ -182,12 +231,12 @@ export function initializeWslManagement(options: {
   }
 
   function request(action: Action, restart = false, elevated = false): void {
-    if (busy || !options.native) return;
+    if (busy || catalogueChecking || !options.native) return;
     if (action.action === "update" && !elevated && !updates.canUpdate()) {
       options.error(t("updates.checkFirst")); return;
     }
     const argumentsForDisplay: Record<string,string[]> = {
-      listOnline:["--list","--online"], update:["--update","--web-download"], shutdown:["--shutdown"],
+      update:["--update","--web-download"], restart:["--shutdown"],
     };
     let args = argumentsForDisplay[action.action];
     let description = "";
@@ -206,9 +255,9 @@ export function initializeWslManagement(options: {
         description = t(restart ? "management.restartConfirmation" : "management.stopConfirmation", { distribution: action.distribution });
       }
     }
-    if (action.action === "shutdown") {
-      title = t("management.shutdownTitle");
-      description = t("management.shutdownConfirmation");
+    if (action.action === "restart") {
+      title = t("management.restartWslTitle");
+      description = t("management.restartWslConfirmation");
     }
     if (action.action === "update") description = updates.confirmation();
     if (elevated) description = t("management.adminConfirmation");
@@ -218,16 +267,15 @@ export function initializeWslManagement(options: {
       description = t("management.importConfirmation", { name: action.name, location: action.location, path: action.path });
     }
     if (action.action === "install") {
-      if (!action.name) { options.error(t("management.enterInstallName")); return; }
+      if (!catalogue.some(entry => entry.name === action.name)) { options.error(t("management.enterInstallName")); return; }
       args = ["--install","--distribution",action.name,"--no-launch"];
       description = t("management.installConfirmation", { name: action.name });
     }
     const command = "wsl.exe " + args.map(arg => /\s/.test(arg) ? JSON.stringify(arg) : arg).join(" ");
-    if (readOnly.has(action.action)) { void execute(action, command, false); return; }
     element("wsl-action-title").removeAttribute("data-i18n");
     element("wsl-action-title").textContent = title;
     element("wsl-action-description").textContent = description;
-    element("wsl-action-command").textContent = command + (restart ? "\n" + t("management.restartCommandHint") : "");
+    element("wsl-action-command").textContent = command + (restart || action.action === "restart" ? "\n" + t("management.restartCommandHint") : "");
     pending = () => { void execute(action, command, restart, elevated); };
     closeSelects(); dialog.showModal();
   }
@@ -244,5 +292,5 @@ export function initializeWslManagement(options: {
   element("wsl-install").onclick = () => request({action:"install", name:value("wsl-install-name")});
   disabled();
   onLanguageChanged(render);
-  return {refresh, visit:updates.visit};
+  return {refresh, visit:updates.visit, visitInstallation: () => { if (!catalogueVisited) void syncCatalogue(); }};
 }

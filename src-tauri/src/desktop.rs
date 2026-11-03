@@ -3,12 +3,16 @@ use dootty::{
     session::{Event, Session},
 };
 use portable_pty::CommandBuilder;
+#[path = "lifecycle_windows.rs"]
+mod lifecycle_windows;
 #[path = "platform.rs"]
 mod platform;
 #[path = "query_windows.rs"]
 mod query_windows;
 #[path = "updates_windows.rs"]
 mod updates_windows;
+#[path = "windows_util.rs"]
+mod windows_util;
 use std::collections::HashMap;
 use std::{
     path::PathBuf,
@@ -27,9 +31,12 @@ static CLOSING: AtomicBool = AtomicBool::new(false);
 static LIFECYCLE: Mutex<()> = Mutex::new(());
 static WSL_QUERY_GATE: std::sync::RwLock<()> = std::sync::RwLock::new(());
 
+static STORAGE: std::sync::OnceLock<dootty::storage::Layout> = std::sync::OnceLock::new();
 pub(super) fn config_path() -> Result<PathBuf, String> {
-    let root = std::env::var_os("APPDATA").ok_or("Le dossier APPDATA est introuvable.")?;
-    Ok(PathBuf::from(root).join("DooTTY").join("config.json"))
+    STORAGE
+        .get()
+        .map(|layout| layout.config.clone())
+        .ok_or("Storage not initialized".into())
 }
 fn config() -> Result<Config, String> {
     Config::read(&config_path()?)
@@ -312,6 +319,68 @@ fn confirm_close_window(app: tauri::AppHandle, state: State<'_, Sessions>) -> Re
 }
 
 pub fn run() {
+    if let Err(error) = run_inner() {
+        let text: Vec<u16> = error.encode_utf16().chain(Some(0)).collect();
+        unsafe {
+            windows_sys::Win32::UI::WindowsAndMessaging::MessageBoxW(
+                std::ptr::null_mut(),
+                text.as_ptr(),
+                windows_sys::core::w!("DooTTY"),
+                0x10,
+            );
+        }
+    }
+}
+fn run_inner() -> Result<(), String> {
+    let args: Vec<_> = std::env::args_os().skip(1).collect();
+    if args.first().is_some_and(|a| a == "--create-shortcut") {
+        let result = args
+            .get(1)
+            .zip(args.get(2))
+            .ok_or("Missing shortcut arguments".to_string())
+            .and_then(|(link, target)| {
+                windows_util::create_shortcut(PathBuf::from(link), PathBuf::from(target))
+            });
+        std::process::exit(if result.is_ok() { 0 } else { 12 });
+    }
+    if args.first().is_some_and(|a| a == "--check-webview") {
+        std::process::exit(if windows_util::webview_available() {
+            0
+        } else {
+            20
+        });
+    }
+    if args
+        .first()
+        .is_some_and(|a| a == "--installer-close" || a == "--installer-check")
+    {
+        let target = args.get(1).map(PathBuf::from).filter(|p| {
+            p.is_absolute()
+                && p.file_name()
+                    .is_some_and(|n| n.eq_ignore_ascii_case("DooTTY.exe"))
+        });
+        let code = target
+            .map(|p| lifecycle_windows::installer_control(p, args[0] == "--installer-close"))
+            .unwrap_or(11);
+        std::process::exit(code);
+    }
+    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+    let roaming = std::env::var_os("APPDATA").map(PathBuf::from);
+    let local = std::env::var_os("LOCALAPPDATA").map(PathBuf::from);
+    let layout = dootty::storage::Layout::resolve(&exe, roaming.as_deref(), local.as_deref())?;
+    layout.prepare()?;
+    let Some(instance) = lifecycle_windows::Instance::acquire(&layout.instance_key())? else {
+        return Ok(());
+    };
+    let _ = STORAGE.set(layout.clone());
+    let mut context = tauri::generate_context!();
+    if layout.portable {
+        context.config_mut().app.app_directories_override =
+            Some(tauri::utils::config::AppDirectoriesOverride::Root(
+                layout.config.parent().unwrap().to_path_buf(),
+            ));
+    }
+    let webview = layout.webview.clone();
     let identity: Vec<u16> = "DooSys.DooTTY\0".encode_utf16().collect();
     unsafe {
         windows_sys::Win32::UI::Shell::SetCurrentProcessExplicitAppUserModelID(identity.as_ptr());
@@ -331,6 +400,13 @@ pub fn run() {
                 })
                 .build(),
         )
+        .manage(layout)
+        .setup(move |app| {
+            tauri::WebviewWindowBuilder::from_config(app.handle(), &app.config().app.windows[0])?
+                .data_directory(webview.clone())
+                .build()?;
+            Ok(())
+        })
         .manage(Sessions::default())
         .invoke_handler(tauri::generate_handler![
             session_config,
@@ -354,6 +430,7 @@ pub fn run() {
             platform::list_terminal_fonts,
             platform::open_distribution_files,
             platform::wsl_overview,
+            platform::wsl_online_catalogue,
             platform::run_wsl_action,
             platform::update_wsl_elevated,
             platform::open_external_url,
@@ -374,8 +451,9 @@ pub fn run() {
                 let _ = window.emit("close-window-requested", ());
             }
         })
-        .build(tauri::generate_context!())
-        .expect("Impossible de démarrer DooTTY");
+        .build(context)
+        .map_err(|e| e.to_string())?;
+    instance.watch(app.handle().clone());
     app.run(|app, event| {
         if matches!(event, tauri::RunEvent::Exit) {
             if let Ok(slot) = app.state::<Sessions>().inner().0.lock() {
@@ -385,4 +463,5 @@ pub fn run() {
             }
         }
     });
+    Ok(())
 }

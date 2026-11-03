@@ -236,9 +236,26 @@ pub async fn wsl_overview() -> Result<WslOverview, String> {
     .map_err(|e| e.to_string())?
 }
 
+#[tauri::command]
+pub async fn wsl_online_catalogue() -> Result<Vec<dootty::management::CatalogueEntry>, String> {
+    tauri::async_runtime::spawn_blocking(|| {
+        let _guard = OperationGuard::acquire()?;
+        let text = super::query_windows::query(
+            &["--list".into(), "--online".into()],
+            std::time::Duration::from_secs(60),
+        )?;
+        dootty::management::parse_online_catalogue(&text)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 #[derive(Clone, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum OperationOutput {
+    Note {
+        text: String,
+    },
     Data {
         stream: &'static str,
         bytes: Vec<u8>,
@@ -257,21 +274,54 @@ pub async fn run_wsl_action(
     tauri::async_runtime::spawn_blocking(move || {
         use dootty::management::{CommandResult, WslAction};
         use std::{io::Read, process::Stdio};
+        struct CompleteOnDrop(tauri::ipc::Channel<OperationOutput>);
+        impl Drop for CompleteOnDrop {
+            fn drop(&mut self) {
+                let _ = self.0.send(OperationOutput::Complete);
+            }
+        }
+        let _complete = CompleteOnDrop(output.clone());
         let _guard = OperationGuard::acquire()?;
         // Let existing probes finish before stopping WSL; no probe may cross this stop.
         let stopping = matches!(
             &request,
-            WslAction::Shutdown {} | WslAction::Terminate { .. }
+            WslAction::Restart {} | WslAction::Terminate { .. }
         );
         let _queries = if stopping {
             Some(super::WSL_QUERY_GATE.write().map_err(|e| e.to_string())?)
         } else {
             None
         };
-        let read_only = matches!(&request, WslAction::ListOnline {});
         let mut args = request.args()?;
         let mut export = None;
         let installed = distributions()?;
+        let relaunch = if matches!(&request, WslAction::Restart {}) {
+            let text = super::query_windows::query(
+                &["--list".into(), "--running".into(), "--quiet".into()],
+                std::time::Duration::from_secs(15),
+            )?;
+            let running: Vec<String> = text
+                .lines()
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .map(str::to_owned)
+                .collect();
+            let names: Vec<String> = installed.iter().map(|d| d.name.clone()).collect();
+            let targets = dootty::management::restart_targets(
+                &running,
+                &names,
+                installed
+                    .iter()
+                    .find(|d| d.is_default)
+                    .map(|d| d.name.as_str()),
+            );
+            if targets.is_empty() {
+                return Err("Aucune distribution installée à relancer.".into());
+            }
+            targets
+        } else {
+            Vec::new()
+        };
         if let Some(target) = request.target() {
             if !installed.iter().any(|d| d.name == target) {
                 return Err("La distribution ciblée n’existe plus. Actualisez la liste.".into());
@@ -320,7 +370,7 @@ pub async fn run_wsl_action(
         if stopping {
             let owned = sessions.lock().map_err(|e| e.to_string())?;
             for (session, profile) in owned.values() {
-                if matches!(&request, WslAction::Shutdown {})
+                if matches!(&request, WslAction::Restart {})
                     || request.target() == Some(profile.distribution.as_str())
                 {
                     session.close();
@@ -377,34 +427,29 @@ pub async fn run_wsl_action(
             "stderr",
             output.clone(),
         );
-        let mut timed_out = false;
-        let status = if read_only {
-            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(60);
-            loop {
-                if let Some(status) = child.try_wait().map_err(|e| e.to_string())? {
-                    break status;
-                }
-                if std::time::Instant::now() >= deadline {
-                    timed_out = true;
-                    let _ = child.kill();
-                    break child.wait().map_err(|e| e.to_string())?;
-                }
-                std::thread::sleep(std::time::Duration::from_millis(50));
-            }
-        } else {
-            child.wait().map_err(|e| e.to_string())?
-        };
+        let status = child.wait().map_err(|e| e.to_string())?;
         stdout
             .join()
             .map_err(|_| "Lecture des messages interrompue.")??;
         stderr
             .join()
             .map_err(|_| "Lecture des erreurs interrompue.")??;
-        let _ = output.send(OperationOutput::Complete);
-        if timed_out {
-            return Err("La commande de lecture WSL a dépassé 60 secondes.".into());
-        }
         if status.success() {
+            for distribution in relaunch {
+                let args = vec![
+                    "--distribution".into(),
+                    distribution.clone(),
+                    "--exec".into(),
+                    "/bin/true".into(),
+                ];
+                let command = format!(
+                    "\n> wsl.exe --distribution {} --exec /bin/true\n",
+                    serde_json::to_string(&distribution).map_err(|e| e.to_string())?
+                );
+                let _ = output.send(OperationOutput::Note { text: command });
+                super::query_windows::query(&args, std::time::Duration::from_secs(45))
+                    .map_err(|e| format!("Relance de {distribution} : {e}"))?;
+            }
             if let Some(export) = &mut export {
                 export.publish()?;
             }

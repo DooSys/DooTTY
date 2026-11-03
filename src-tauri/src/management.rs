@@ -4,9 +4,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Deserialize)]
 #[serde(tag = "action", rename_all = "camelCase", deny_unknown_fields)]
 pub enum WslAction {
-    ListOnline {},
     Update {},
-    Shutdown {},
+    Restart {},
     Terminate {
         distribution: String,
     },
@@ -25,6 +24,74 @@ pub enum WslAction {
     Install {
         name: String,
     },
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq)]
+pub struct CatalogueEntry {
+    pub name: String,
+    pub label: String,
+}
+
+/// The command emits localized prose followed by a two-column ASCII-name table.
+pub fn parse_online_catalogue(text: &str) -> Result<Vec<CatalogueEntry>, String> {
+    let mut entries = Vec::<CatalogueEntry>::new();
+    for line in text.lines() {
+        let line = line.trim().trim_start_matches('\u{feff}');
+        let Some(end) = line.find(char::is_whitespace) else {
+            continue;
+        };
+        let name = &line[..end];
+        let remaining = &line[end..];
+        if !(remaining.starts_with("  ") || remaining.starts_with('\t'))
+            || name.len() > 256
+            || name.starts_with('-')
+            || !name
+                .bytes()
+                .all(|c| c.is_ascii_alphanumeric() || matches!(c, b'-' | b'_' | b'.'))
+            || ["NAME", "NOM", "NOMBRE", "NOME", "NAAM"].contains(&name)
+            || entries.iter().any(|entry| entry.name == name)
+        {
+            continue;
+        }
+        let label = remaining.trim();
+        if label.is_empty() || label.chars().any(char::is_control) {
+            continue;
+        }
+        entries.push(CatalogueEntry {
+            name: name.into(),
+            label: label.into(),
+        });
+        if entries.len() > 512 {
+            return Err("WSL catalogue exceeds 512 entries".into());
+        }
+    }
+    if entries.is_empty() {
+        return Err("WSL catalogue is empty or unrecognized".into());
+    }
+    Ok(entries)
+}
+
+/// Restart previously running distros; when none were running, start only the default.
+pub fn restart_targets(
+    running: &[String],
+    installed: &[String],
+    default: Option<&str>,
+) -> Vec<String> {
+    let mut targets = Vec::new();
+    for distro in running {
+        if installed.contains(distro) && !targets.contains(distro) {
+            targets.push(distro.clone());
+        }
+    }
+    if targets.is_empty() {
+        if let Some(distro) = default
+            .filter(|name| installed.iter().any(|d| d == name))
+            .or_else(|| installed.first().map(String::as_str))
+        {
+            targets.push(distro.to_owned());
+        }
+    }
+    targets
 }
 
 fn name(value: &str) -> Result<String, String> {
@@ -83,9 +150,8 @@ impl WslAction {
 
     pub fn args(&self) -> Result<Vec<String>, String> {
         let args: Vec<String> = match self {
-            Self::ListOnline {} => vec!["--list".into(), "--online".into()],
             Self::Update {} => vec!["--update".into(), "--web-download".into()],
-            Self::Shutdown {} => vec!["--shutdown".into()],
+            Self::Restart {} => vec!["--shutdown".into()],
             Self::Terminate { distribution } => vec!["--terminate".into(), name(distribution)?],
             Self::SetDefault { distribution } => vec!["--set-default".into(), name(distribution)?],
             Self::Export { distribution, path } => {
@@ -145,6 +211,43 @@ pub fn decode_output(bytes: &[u8]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn online_catalogue_parses_localized_tables_and_rejects_prose() {
+        let text = "Les distributions suivantes sont disponibles.\nNOM                 NOM CONVIVIAL\nUbuntu-24.04        Ubuntu 24.04 LTS\nDebian              Debian GNU/Linux\nDebian              Debian GNU/Linux\n--bad               Invalid\n";
+        let rows = parse_online_catalogue(text).unwrap();
+        assert_eq!(rows.len(), 2);
+        assert_eq!(rows[0].name, "Ubuntu-24.04");
+        assert_eq!(rows[1].label, "Debian GNU/Linux");
+        assert!(parse_online_catalogue("Network unavailable\nNAME    FRIENDLY NAME").is_err());
+        assert_eq!(
+            parse_online_catalogue("NAME\tFRIENDLY NAME\nFedoraLinux-42\tFedora Linux 42").unwrap()
+                [0]
+            .name,
+            "FedoraLinux-42"
+        );
+    }
+    #[test]
+    fn global_restart_preserves_the_running_set_and_uses_a_default_when_idle() {
+        let installed = vec![
+            "Debian".to_owned(),
+            "Ubuntu".to_owned(),
+            "Archive".to_owned(),
+        ];
+        assert_eq!(
+            restart_targets(
+                &["Ubuntu".into(), "Ubuntu".into(), "Missing".into()],
+                &installed,
+                Some("Debian")
+            ),
+            vec!["Ubuntu"]
+        );
+        assert_eq!(
+            restart_targets(&[], &installed, Some("Ubuntu")),
+            vec!["Ubuntu"]
+        );
+        assert!(restart_targets(&[], &[], None).is_empty());
+        assert_eq!(WslAction::Restart {}.args().unwrap(), vec!["--shutdown"]);
+    }
     #[test]
     fn stable_update_uses_the_same_github_source_as_the_version_check() {
         assert_eq!(

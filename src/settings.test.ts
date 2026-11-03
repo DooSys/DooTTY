@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { defaults, themes, formatBytes, createProfile } from "./settings";
+import { defaults, themes, terminalTheme, formatBytes, createProfile } from "./settings";
 it("distinguishes missing disk metadata, zero size and large files", () => {
   expect(formatBytes(null)).toContain("inaccessible");
   expect(formatBytes(0)).toBe("0 octets");
@@ -50,4 +50,14 @@ it("captures the launch settings for an existing tab independently of later edit
     username: "developer",
     directory: "/home/developer/projets",
   });
+});
+
+it("keeps every console palette independent of the app theme", () => {
+  for (const name of Object.keys(themes)) {
+    for (const uiTheme of ["dark", "light"] as const) {
+      const appearance = { ...defaults.appearance, theme: name, uiTheme };
+      expect(terminalTheme(appearance)).toBe(themes[name]);
+    }
+  }
+  expect(terminalTheme({ theme: "unknown" })).toBe(themes.campbell);
 });

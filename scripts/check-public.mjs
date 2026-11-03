@@ -24,7 +24,10 @@ try {
   }
   const inventory = git([...prefix, 'ls-files', '--cached', '--others', '--exclude-standard', '-z']);
   if (inventory.status !== 0) throw new Error('Cannot read the public file inventory');
-  const files = [...new Set(inventory.stdout.split('\0').filter(Boolean))].sort();
+  const removed = git([...prefix, 'ls-files', '--deleted', '-z']);
+  if (removed.status !== 0) throw new Error('Cannot inspect removed working files');
+  const deleted = new Set(removed.stdout.split('\0').filter(Boolean));
+  const files = [...new Set(inventory.stdout.split('\0').filter(name => name && !deleted.has(name)))].sort();
   const failures = [];
   const dependencyInventory = JSON.parse(await readFile(path.join(project, 'licenses/dependencies.json'), 'utf8'));
   for (const [filename, property] of [['src-tauri/Cargo.lock', 'cargo_lock_sha256'], ['package-lock.json', 'npm_lock_sha256']]) {

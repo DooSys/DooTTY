@@ -2,12 +2,14 @@
   <img src="docs/img/Logo_DooTTY_favicon_v3.png" alt="Logo DooTTY" width="96"/>
 </p>
 
-<h1 align="center">DooTTY</h1>
+<h1 align="center">
+  <img src="docs/img/dootty-wordmark.svg" alt="DooTTY" width="280" height="76"/>
+</h1>
 
 <p align="center"><strong>Your native WSL client.</strong></p>
 
 <p align="center">
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.0.5--b%C3%AAta-00b8d9" alt="Version 0.0.5 bêta"/></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.0.6-00b8d9" alt="Version 0.0.6"/></a>
   <img src="https://img.shields.io/badge/Windows-11-0078D4" alt="Windows 11"/>
   <img src="https://img.shields.io/badge/WSL-Linux-FCC624?logo=linux&amp;logoColor=black" alt="WSL — Linux"/>
   <img src="https://img.shields.io/badge/Rust-Tauri-24C8DB?logo=rust&amp;logoColor=white" alt="Rust et Tauri"/>
@@ -36,22 +38,23 @@ environnement Linux sous Windows, avec ses distributions et ses outils au même 
   version installée, recherche de mises à jour et accès aux notes de version GitHub.
 - **Des réglages réunis** : accès à WSL Settings, au fichier de configuration
   WSL et à l’emplacement des disques VHDX depuis l’application.
-- **Installation et sauvegarde — Bêta** : catalogue des distributions,
+- **Installation et sauvegarde — Bêta** : catalogue synchronisé des distributions,
   installation, export et import de sauvegardes.
 - **Une interface à votre goût** : français ou anglais, polices à chasse fixe,
-  taille du texte, curseur et cinq jeux de couleurs.
+  thèmes sombre ou clair, taille du texte, curseur et cinq jeux de couleurs.
 - **Vos préférences conservées** : réglages centralisés, enregistrement explicite
   et restauration à la réouverture, avec confirmation avant de fermer plusieurs onglets.
 
 ## Démarrer
 
-Copiez `DooTTY.exe` dans un dossier Windows puis lancez-le. Prérequis :
-**Windows 11 x64**, **WSL**, une distribution Linux et **Microsoft WebView2**.
-Aucun outil de développement n’est nécessaire pour l’utiliser.
+Téléchargez `DooTTY-0.0.6-setup.exe` depuis les
+[versions GitHub](https://github.com/DooSys/DooTTY/releases). Choisissez une
+**installation personnelle** ou le **mode portable** dans un dossier de votre choix.
+Les réglages sont conservés lors des mises à jour.
 
-La version actuelle est livrée sans installateur et conserve ses préférences
-dans le profil Windows. Voir les [options de distribution](docs/distribution.md)
-pour l’installation et le mode portable envisagés.
+Prérequis : **Windows 11 x64**, **WSL**, une distribution Linux et **Microsoft
+WebView2**. Aucun outil de développement n’est nécessaire pour l’utiliser.
+Voir les [modes de distribution](docs/distribution.md).
 
 ## Documentation et contribution
 

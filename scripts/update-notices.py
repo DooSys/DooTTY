@@ -19,6 +19,13 @@ resolved = {item['id'] for item in metadata['resolve']['nodes']}
 supplemental_root = project / 'licenses/supplemental'
 supplemental = {(item['name'], item['version']): item for item in json.loads((supplemental_root / 'sources.json').read_text())}
 entries = []
+# Only byte-identical decoded notice texts share a reference; distinct copyrights stay intact.
+unique_texts = {}
+def text_reference(text):
+    text = text.rstrip()
+    if text not in unique_texts:
+        unique_texts[text] = f"T{len(unique_texts) + 1:03d}"
+    return unique_texts[text]
 notices = ['DooTTY — Third-party notices\n\nThis inventory includes the Windows Rust dependency graph (including build tools)\nand the JavaScript runtime dependency closure. Inclusion does not imply that every\nlisted package is linked into the executable. Upstream license expressions and\nnotices are preserved; DooTTY\'s MIT license does not replace them.\n']
 
 def add(name, version, license_name, source, root=None, license_file=None, ecosystem='rust'):
@@ -45,7 +52,7 @@ def add(name, version, license_name, source, root=None, license_file=None, ecosy
                     **({'supplemental_source': extra['url']} if extra else {})})
     notices.append(f'\n{"=" * 72}\n{name} {version} [{ecosystem}]\nLicense: {license_name}\nSource: {source}\n')
     for filename, text in texts:
-        notices.append(f'\n--- {filename} ---\n{text.rstrip()}\n')
+        notices.append(f'  {filename}: [{text_reference(text)}]\n')
 
 for item in sorted(metadata['packages'], key=lambda p: (p['name'], p['version'])):
     if item['id'] not in resolved or item['name'] == 'dootty':
@@ -82,5 +89,14 @@ inventory = {
     'packages': sorted(entries, key=lambda entry: (entry['ecosystem'], entry['name'], entry['version'])),
 }
 (project / 'licenses/dependencies.json').write_text(json.dumps(inventory, indent=2) + '\n', encoding='utf-8')
+# Installer, artwork and palette notices also accompany the binary, not just Cargo/npm.
+for file in sorted((project / 'licenses').rglob('*')):
+    if file.is_file() and file.suffix.lower() in ('.txt', '.md'):
+        reference = text_reference(file.read_text(encoding='utf-8'))
+        relative = file.relative_to(project).as_posix()
+        notices.append(f'\nResource / installer notice: {relative} [{reference}]\n')
+notices.append('\nFULL NOTICE TEXTS\n\nReferences above point to the complete texts below. Only identical text is shared;\nall distinct copyright, attribution, permission and disclaimer notices are retained.\n')
+for text, reference in unique_texts.items():
+    notices.append(f'\n{"=" * 72}\n[{reference}]\n{text}\n')
 (project / 'THIRD_PARTY_NOTICES.txt').write_text('\n'.join(notices), encoding='utf-8')
-print(f'{len(entries)} dependency entries; every entry has license/notice text. No local source paths exported.')
+print(f'{len(entries)} dependency entries, {len(unique_texts)} distinct full notice texts; all resource and installer notices included. No local source paths exported.')

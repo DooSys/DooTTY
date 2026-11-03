@@ -57,6 +57,7 @@ impl LaunchProfile {
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(default, deny_unknown_fields, rename_all = "camelCase")]
 pub struct Appearance {
+    pub ui_theme: String,
     pub font_family: String,
     pub font_size: u16,
     pub theme: String,
@@ -67,6 +68,7 @@ pub struct Appearance {
 impl Default for Appearance {
     fn default() -> Self {
         Self {
+            ui_theme: "dark".into(),
             font_family: "Cascadia Mono, Consolas, monospace".into(),
             font_size: 14,
             theme: "campbell".into(),
@@ -151,7 +153,8 @@ impl Config {
         {
             return Err("Code de langue invalide / Invalid language code.".into());
         }
-        if self.appearance.font_family.trim().is_empty()
+        if !["dark", "light"].contains(&self.appearance.ui_theme.as_str())
+            || self.appearance.font_family.trim().is_empty()
             || self.appearance.font_family.len() > 256
             || self.appearance.font_family.chars().any(char::is_control)
             || !(8..=32).contains(&self.appearance.font_size)
@@ -312,6 +315,21 @@ mod tests {
         std::fs::write(&path, vec![b' '; 65537]).unwrap();
         assert!(Config::read(&path).unwrap_err().contains("64 Kio"));
         std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn interface_theme_migrates_and_rejects_unknown_modes() {
+        let mut value = serde_json::to_value(Config::default()).unwrap();
+        value["appearance"]
+            .as_object_mut()
+            .unwrap()
+            .remove("uiTheme");
+        let old: Config = serde_json::from_value(value).unwrap();
+        assert_eq!(old.appearance.ui_theme, "dark");
+        let mut changed = old;
+        changed.appearance.ui_theme = "light".into();
+        assert!(changed.validate().is_ok());
+        changed.appearance.ui_theme = "unknown".into();
+        assert!(changed.validate().is_err());
     }
     #[test]
     fn old_configuration_gets_new_defaults() {

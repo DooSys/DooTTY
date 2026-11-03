@@ -9,7 +9,15 @@ L'[inventaire figé](licenses/dependencies.json) contient les versions, expressi
 de licence, sources et noms des notices. Les [textes complets](THIRD_PARTY_NOTICES.txt)
 accompagnent les archives binaires. L'inventaire couvre le graphe Rust résolu pour
 Windows x64, outils de compilation compris, et les dépendances JavaScript d'exécution.
-Il ne prétend pas que tous ces paquets sont liés dans le binaire.
+Il ne prétend pas que tous ces paquets sont liés dans le binaire. Les textes
+strictement identiques sont regroupés : chaque composant conserve ses références
+vers les textes complets, avec toutes les attributions distinctes. Les notices
+des ressources graphiques et de NSIS sont incluses dans ce même fichier.
+
+La livraison contient seulement `LICENSE`, `THIRD_PARTY_NOTICES.txt` et un court
+`THIRD_PARTY.md` renvoyant vers GitHub pour le détail des sources. Le répertoire
+`licenses/` reste dans le dépôt ; son contenu obligatoire est consolidé dans les
+notices livrées, disponibles hors ligne.
 
 | Composant direct | Licence déclarée |
 |---|---|
@@ -18,7 +26,7 @@ Il ne prétend pas que tous ces paquets sont liés dans le binaire.
 | i18next | MIT — [notice](licenses/i18next-MIT.txt) |
 | portable-pty | MIT |
 | arboard | MIT OR Apache-2.0 |
-| windows-sys | MIT OR Apache-2.0 |
+| windows / windows-sys | MIT OR Apache-2.0 |
 | winreg | MIT |
 | serde / serde_json | MIT OR Apache-2.0 |
 | TypeScript | Apache-2.0 |
@@ -46,6 +54,12 @@ chemins locaux et les notices sont destinés au dépôt. Les outils de développ
 JavaScript ne sont pas embarqués dans l'application ; leurs conditions sont
 accessibles dans leurs paquets installés et le fichier de verrouillage.
 
+L’installeur utilise NSIS **3.11**, ses composants nsDialogs, System et le
+compresseur LZMA. Leurs notices sont conservées dans
+[licenses/nsis-notices.txt](licenses/nsis-notices.txt), d’après le paquet source
+NSIS 3.11 distribué par Debian. Ce fichier inclut les attributions et textes de
+licence des composants, y compris ceux du programme de désinstallation.
+
 ## Graphismes
 
 Le logo DooTTY a été fourni pour le projet. Sa source transparente est
@@ -63,3 +77,5 @@ Les palettes Campbell, Dark+ et Solarized Dark reprennent des valeurs publiées
 par Windows Terminal sous MIT : [notice Microsoft](licenses/windows-terminal-MIT.txt).
 Windows Terminal est aussi une référence d'interface. Aucun code de Codex ou de
 MobaXterm n'est intégré au projet.
+
+Le logo WSL affiché près de WSL Settings provient du [dépôt Microsoft WSL](https://github.com/microsoft/WSL/blob/697572d664c9371abbc53cab9cf7b4b32be1980e/Images/Square44x44Logo.targetsize-256.png), sous [MIT](licenses/microsoft-wsl-MIT.txt). Le PNG est conservé intact et affiché en petit format par CSS. Empreinte SHA-256 : `06fa39301c97531152761a4d780a1fedcdaec6b55ff08f5327eba2ff19cdd9bb`. Les marques restent la propriété de Microsoft.
