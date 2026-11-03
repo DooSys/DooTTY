@@ -216,10 +216,10 @@ Function .onInit
     Quit
   ${EndIf}
   InitPluginsDir
-  File /oname=$PLUGINSDIR\DooTTY-control.exe "${PAYLOAD}/DooTTY.exe"
-  File /oname=$PLUGINSDIR\LICENSE.txt "${PAYLOAD}/LICENSE"
-  File /oname=$PLUGINSDIR\default-fr.json "${PAYLOAD}/default-fr.json"
-  File /oname=$PLUGINSDIR\default-en.json "${PAYLOAD}/default-en.json"
+  File /oname=$PLUGINSDIR\DooTTY-control.exe "${PAYLOAD}\DooTTY.exe"
+  File /oname=$PLUGINSDIR\LICENSE.txt "${PAYLOAD}\LICENSE"
+  File /oname=$PLUGINSDIR\default-fr.json "${PAYLOAD}\default-fr.json"
+  File /oname=$PLUGINSDIR\default-en.json "${PAYLOAD}\default-en.json"
   ReadRegStr $ExistingDir HKCU "Software\DooSys\DooTTY" "InstallLocation"
   ReadRegStr $ExistingVersion HKCU "Software\DooSys\DooTTY" "Version"
   StrCpy $PortableMode 0
@@ -582,7 +582,7 @@ Function un.onInit
     StrCpy $LANGUAGE ${LANG_FRENCH}
   ${EndIf}
   InitPluginsDir
-  File /oname=$PLUGINSDIR\DooTTY-control.exe "${PAYLOAD}/DooTTY.exe"
+  File /oname=$PLUGINSDIR\DooTTY-control.exe "${PAYLOAD}\DooTTY.exe"
   StrCpy $DeletePrefs 0
   ${GetParameters} $0
   ClearErrors
