@@ -1017,8 +1017,8 @@ monitoring = initializeMonitoring({
 });
 el("settings-toggle").onclick = openSettings;
 el("about-github").onclick = () => {
-  if (native) run(invoke("open_external_url", { url: "https://github.com/DooSys" }));
-  else window.open("https://github.com/DooSys", "_blank", "noopener,noreferrer");
+  if (native) run(invoke("open_external_url", { url: "https://github.com/DooSys/DooTTY/" }));
+  else window.open("https://github.com/DooSys/DooTTY/", "_blank", "noopener,noreferrer");
 };
 el("copy").onclick = () => {
   const tab = activeTerminal();

@@ -188,7 +188,7 @@
     "description": "A Windows client dedicated to your local WSL distributions.",
     "technology": "Interface inspired by Windows Terminal. xterm.js terminal, native ConPTY and WSL connection, built with Tauri and Rust.",
     "icons": "Distribution icons: Simple Icons and Linux projects. Sources and licenses are included in the archive notices.",
-    "github": "DooSys on GitHub"
+    "github": "DooTTY on GitHub"
   },
   "settings": {
     "discardHeading": "Discard changes?",
