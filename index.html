@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="fr">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1" name="viewport"/>
+  <meta content="dark" name="color-scheme"/>
+  <link href="/assets/branding/app-icon.png" rel="icon" type="image/png"/>
+  <title>
+   DooTTY
+  </title>
+ </head>
+ <body>
+  <header data-tauri-drag-region="">
+   <div aria-label="Sessions et paramètres" data-i18n-aria-label="accessibility.tabs" id="tabs" role="tablist">
+   </div>
+   <div aria-label="Ouvrir une session" class="new-tab-actions" data-i18n-aria-label="accessibility.openSession" role="group">
+    <button aria-label="Nouvel onglet WSL" class="header-action" data-i18n-aria-label="accessibility.newTab" data-i18n-title="accessibility.newTabTitle" id="new-tab" title="Nouvel onglet · Ctrl+Maj+T">
+     <svg aria-hidden="true" height="14" viewbox="0 0 16 16" width="14">
+      <path d="M8 2.5v11M2.5 8h11">
+      </path>
+     </svg>
+    </button>
+    <button aria-controls="terminal-menu" aria-expanded="false" aria-label="Choisir une distribution et ouvrir le menu" class="header-action" data-i18n-aria-label="accessibility.menu" data-i18n-title="accessibility.menuTitle" id="menu-toggle" title="Distributions et menu">
+     <svg aria-hidden="true" height="12" viewbox="0 0 16 16" width="12">
+      <path d="m4 6 4 4 4-4">
+      </path>
+     </svg>
+    </button>
+   </div>
+   <div class="drag-space" data-tauri-drag-region="">
+   </div>
+   <div class="app-brand" data-tauri-drag-region="">
+    <img class="header-logo" src="/assets/branding/app-icon.png" alt="" data-tauri-drag-region="" />
+    <span class="app-name" data-tauri-drag-region="">Doo<span class="brand-accent" data-tauri-drag-region="">TTY</span></span>
+   </div>
+   <button id="settings-toggle" class="header-settings" type="button" data-i18n-aria-label="common.appSettings" data-i18n-title="common.appSettings" aria-label="Paramètres DooTTY" title="Paramètres DooTTY">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+     <path d="m9.3 3-.6 2.1-1.5.9-2.1-.5L3.3 8.6l1.5 1.6v1.7L3.3 13.5l1.8 3.1 2.1-.5 1.5.9.6 2.1h3.6l.6-2.1 1.5-.9 2.1.5 1.8-3.1-1.5-1.6v-1.7l1.5-1.6-1.8-3.1-2.1.5-1.5-.9-.6-2.1Z"/>
+     <circle cx="11.1" cy="11.1" r="3"/>
+    </svg>
+   </button>
+   <div class="window-controls">
+    <button aria-label="Réduire" data-i18n-aria-label="accessibility.minimize" id="minimize">
+     ─
+    </button>
+    <button aria-label="Agrandir ou restaurer" data-i18n-aria-label="accessibility.maximize" id="maximize">
+     □
+    </button>
+    <button aria-label="Fermer la fenêtre" data-i18n-aria-label="accessibility.closeWindow" id="close-window">
+     ✕
+    </button>
+   </div>
+   <nav aria-label="Terminal" hidden="" id="terminal-menu">
+    <div aria-label="Distributions WSL" data-i18n-aria-label="accessibility.distributions" id="distribution-menu" role="group">
+    </div>
+    <div class="separator">
+    </div>
+    <button id="menu-new">
+     <span class="i18n-label" data-i18n="common.newTab">
+      Nouvel onglet
+     </span>
+     <kbd data-i18n="keys.newTab">
+      Ctrl+Maj+T
+     </kbd>
+    </button>
+    <div class="separator">
+    </div>
+    <button id="copy">
+     <span class="i18n-label" data-i18n="common.copy">
+      Copier
+     </span>
+     <kbd data-i18n="keys.copy">
+      Ctrl+Maj+C
+     </kbd>
+    </button>
+    <button id="paste">
+     <span class="i18n-label" data-i18n="common.paste">
+      Coller
+     </span>
+     <kbd data-i18n="keys.paste">
+      Ctrl+Maj+V
+     </kbd>
+    </button>
+    <button id="select-all">
+     <span class="i18n-label" data-i18n="common.selectAll">
+      Tout sélectionner
+     </span>
+     <kbd data-i18n="keys.selectAll">
+      Ctrl+Maj+A
+     </kbd>
+    </button>
+    <button aria-pressed="false" data-i18n-title="general.rectangleMenuHint" id="rectangular-selection" title="Active ce mode uniquement pour l’onglet courant." type="button">
+     <span data-i18n="general.rectangleMenu">
+      Sélection rectangulaire
+     </span>
+     <span aria-hidden="true" class="rectangle-check">
+     </span>
+    </button>
+    <button id="search-toggle">
+     <span class="i18n-label" data-i18n="common.search">
+      Rechercher
+     </span>
+     <kbd data-i18n="keys.search">
+      Ctrl+Maj+F
+     </kbd>
+    </button>
+    <button data-i18n="common.reconnect" disabled="" id="reconnect">
+     Reconnecter cet onglet
+    </button>
+    <div class="separator">
+    </div>
+
+   </nav>
+  </header>
+  <aside hidden="" id="notice" role="alert">
+   <span id="notice-text">
+   </span>
+   <button aria-label="Masquer le message" data-i18n-aria-label="accessibility.dismiss" id="notice-close">
+    ✕
+   </button>
+  </aside>
+  <form hidden="" id="search" role="search">
+   <input aria-label="Rechercher dans le terminal" data-i18n-aria-label="accessibility.search" data-i18n-placeholder="accessibility.searchPlaceholder" id="query" placeholder="Rechercher dans l’historique"/>
+   <button data-i18n="common.next" type="submit">
+    Suivant
+   </button>
+   <button aria-label="Fermer la recherche" data-i18n-aria-label="accessibility.closeSearch" id="search-close" type="button">
+    ✕
+   </button>
+  </form>
+  <main id="workspace">
+   <aside id="monitoring" hidden data-i18n-aria-label="monitor.heading" aria-label="Monitoring WSL">
+    <div class="monitor-top"><button id="monitor-toggle" type="button" aria-expanded="false" aria-controls="monitor-more"></button><img id="monitor-icon" alt=""/><strong class="monitor-detail" id="monitor-distribution"></strong></div>
+    <p id="monitor-state" role="status"></p><p id="monitor-identity" class="monitor-detail"></p>
+    <div id="monitor-more" class="monitor-detail">
+     <h3 data-i18n="monitor.filesystems"></h3><div id="monitor-filesystems"></div>
+    </div>
+    <button id="monitor-pause" type="button"></button>
+    <div class="monitor-tools"><button id="monitor-folder" type="button" data-i18n-title="monitor.openFolder" data-i18n-aria-label="monitor.openFolder"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7V4h7l2 3h9v13H3zM3 9h18"/></svg><span class="monitor-detail" data-i18n="monitor.profileFolder"></span></button></div>
+   </aside>
+   <div id="terminal-panes">
+   </div>
+   <div hidden="" id="empty-state">
+    <img alt="Logo DooTTY" class="brand-logo large" data-i18n-alt="accessibility.logo" src="/assets/branding/app-icon.png"/>
+    <h1>
+     DooTTY
+    </h1>
+    <p>
+     Your native WSL client.
+    </p>
+    <button class="primary" data-i18n="common.openSession" id="empty-new">
+     Ouvrir une session WSL
+    </button>
+   </div>
+   <section aria-label="Paramètres DooTTY" data-i18n-aria-label="common.appSettings" hidden="" id="settings">
+    <nav aria-label="Catégories de paramètres" data-i18n-aria-label="accessibility.categories" id="settings-nav">
+     <p class="nav-heading" data-i18n="common.settings">
+      Paramètres
+     </p>
+     <button class="selected" data-page="general">
+      <span class="nav-icon" aria-hidden="true"><img src="/assets/icons/sliders.svg" alt="" /></span>
+      <span class="i18n-label" data-i18n="nav.general">
+       Général
+      </span>
+     </button>
+     <button data-page="appearance">
+      <span aria-hidden="true" class="nav-icon">
+       <img alt="" src="/assets/icons/brush.svg"/>
+      </span>
+      <span class="i18n-label" data-i18n="nav.appearance">
+       Apparence
+      </span>
+     </button>
+     <div class="separator">
+     </div>
+     <p class="nav-heading" data-i18n="nav.environment">
+      Environnement Linux
+     </p>
+     <button data-page="management">
+      <span aria-hidden="true" class="nav-icon">
+       <img alt="" src="/assets/icons/console.svg"/>
+      </span>
+      <span class="i18n-label" data-i18n="nav.management">
+       Gestion WSL
+      </span>
+     </button>
+     <button data-page="wsl">
+      <span aria-hidden="true" class="nav-icon">
+       <img alt="" src="/assets/icons/penguin.svg"/>
+      </span>
+      <span class="i18n-label" data-i18n="common.wslSettings">
+       Paramètres WSL
+      </span>
+     </button>
+     <button data-page="installation"><span class="nav-icon" aria-hidden="true">⇩</span><span class="i18n-label" data-i18n="nav.installation">WSL Installation et sauvegarde</span><span class="beta-badge" data-i18n="common.beta">Bêta</span></button>
+
+     <div class="separator">
+     </div>
+     <button data-page="shortcuts">
+      <span>
+       ⌘
+      </span>
+      <span class="i18n-label" data-i18n="nav.shortcuts">
+       Raccourcis
+      </span>
+     </button>
+     <button data-page="about">
+      <span aria-hidden="true" class="nav-icon">
+       <img alt="" src="/assets/icons/info.svg"/>
+      </span>
+      <span class="i18n-label" data-i18n="nav.about">
+       À propos
+      </span>
+     </button>
+    </nav>
+    <form id="settings-form" novalidate="">
+     <div id="settings-content">
+      <div id="wsl-operation-output" hidden>       <div class="operation-heading">
+        <h2 data-i18n="management.lastOperation">
+         Dernière opération
+        </h2>
+        <span data-i18n="management.noOperation" id="wsl-operation-state" role="status">
+         Aucune opération
+        </span>
+       </div>
+       <pre aria-label="Messages de la commande WSL" data-i18n="management.logPlaceholder" data-i18n-aria-label="accessibility.operationLog" id="wsl-operation-log" tabindex="0">Les messages de wsl.exe apparaîtront ici.</pre>
+       <button type="button" id="wsl-admin-retry" data-i18n="management.adminRetry" hidden>Réessayer la mise à jour avec les droits administrateur ↗</button>
+</div>
+      <section data-section="general">
+       <h1 data-i18n="nav.general">
+        Général
+       </h1>
+       <p class="page-description" data-i18n="general.description">
+        Langue, lancement, presse-papiers et comportement de l’application.
+       </p>
+       <label class="setting-card"><span><strong data-i18n="general.monitoring">Activer le monitoring WSL</strong><small data-i18n="general.monitoringHint">Affiche le volet et mesure les ressources de la distribution active.</small></span><input class="switch" id="config-monitoring" type="checkbox"/></label>
+       <label class="setting-card">
+        <span>
+         <strong data-i18n="settings.language">
+          Langue de l’interface
+         </strong>
+         <small data-i18n="settings.languageHint">
+          S’applique après enregistrement, sans fermer vos terminaux.
+         </small>
+        </span>
+        <select aria-label="Langue de l’interface" data-i18n-aria-label="settings.language" id="config-language">
+         <option value="fr">
+          Français
+         </option>
+         <option value="en">
+          English
+         </option>
+        </select>
+       </label>
+       <h2 data-i18n="general.launch">
+        Session par défaut
+       </h2>
+       <label class="setting-card">
+        <span>
+         <strong data-i18n="startup.distribution">
+          Distribution par défaut
+         </strong>
+         <small data-i18n="startup.distributionHint">
+          Les sessions déjà ouvertes restent dans leur
+                    distribution.
+         </small>
+        </span>
+        <select aria-label="Distribution par défaut" data-i18n-aria-label="startup.distribution" id="config-distribution" required="">
+         <option value="Debian">
+          Debian
+         </option>
+        </select>
+       </label>
+       <label class="setting-card">
+        <span>
+         <strong data-i18n="startup.username">
+          Utilisateur Linux
+         </strong>
+         <small data-i18n="startup.usernameHint">
+          Laissez vide pour utiliser l’utilisateur habituel de la
+                    distribution.
+         </small>
+        </span>
+        <input data-i18n-placeholder="startup.defaultUserPlaceholder" id="config-username" maxlength="1024" placeholder="Utilisateur par défaut"/>
+       </label>
+       <label class="setting-card">
+        <span>
+         <strong data-i18n="startup.directory">
+          Répertoire de démarrage
+         </strong>
+         <small data-i18n="startup.directoryHint">
+          Un chemin Linux, ou ~ pour le répertoire personnel.
+         </small>
+        </span>
+        <input id="config-directory" maxlength="1024" required=""/>
+       </label>
+       <div class="info-card" data-i18n="startup.sessionHint">
+        Chaque onglet ouvre une session indépendante dans votre
+                distribution existante.
+       </div>
+       <h2 data-i18n="general.clipboard">
+        Copier et coller
+       </h2>
+       <label class="setting-card">
+        <span>
+         <strong data-i18n="interaction.copy">
+          Copier lors de la sélection
+         </strong>
+         <small data-i18n="interaction.copyHint">
+          Copie le texte sélectionné dans le presse-papiers
+                    Windows.
+         </small>
+        </span>
+        <input class="switch" id="config-copy" type="checkbox"/>
+       </label>
+       <label class="setting-card">
+        <span>
+         <strong data-i18n="interaction.paste">
+          Coller avec le clic droit
+         </strong>
+         <small data-i18n="interaction.pasteHint">
+          Dans une application utilisant la souris, le clic droit
+                    reste transmis à Linux. Maj+clic droit force le
+                    collage.
+         </small>
+        </span>
+        <input class="switch" id="config-right-click" type="checkbox"/>
+       </label>
+       <label class="setting-card">
+        <span>
+         <strong data-i18n="general.trimCopy">
+          Supprimer les espaces en fin de ligne à la copie
+         </strong>
+         <small data-i18n="general.trimCopyHint">
+          Conserve l’indentation et les espaces à l’intérieur du texte.
+         </small>
+        </span>
+        <input class="switch" id="config-trim-copy" type="checkbox"/>
+       </label>
+       <label class="setting-card">
+        <span>
+         <strong data-i18n="general.trimPaste">
+          Supprimer les espaces en fin de ligne au collage
+         </strong>
+         <small data-i18n="general.trimPasteHint">
+          Nettoie chaque ligne sans modifier son indentation ni les espaces entre les mots.
+         </small>
+        </span>
+        <input class="switch" id="config-trim-paste" type="checkbox"/>
+       </label>
+       <label class="setting-card">
+        <span>
+         <strong data-i18n="general.trimNewlines">
+          Retirer les retours à la ligne à la fin du collage
+         </strong>
+         <small data-i18n="general.trimNewlinesHint">
+          Évite qu’un retour à la ligne final lance immédiatement une commande collée. Les retours à la ligne internes sont conservés.
+         </small>
+        </span>
+        <input class="switch" id="config-trim-newlines" type="checkbox"/>
+       </label>
+       <h2 data-i18n="general.selectionWindow">
+        Sélection et fenêtre
+       </h2>
+       <label class="setting-card">
+        <span>
+         <strong data-i18n="general.rectangle">
+          Sélection rectangulaire par défaut
+         </strong>
+         <small data-i18n="general.rectangleHint">
+          Sélectionne des colonnes au glisser de la souris. Alt+glisser reste disponible ponctuellement ; Maj force la sélection dans les applications utilisant la souris.
+         </small>
+        </span>
+        <input class="switch" id="config-rectangle" type="checkbox"/>
+       </label>
+       <label class="setting-card">
+        <span>
+         <strong data-i18n="general.warnClose">
+          Avertir avant de fermer plusieurs onglets
+         </strong>
+         <small data-i18n="general.warnCloseHint">
+          Demande confirmation avant de fermer une fenêtre contenant plusieurs terminaux.
+         </small>
+        </span>
+        <input class="switch" id="config-warn-close" type="checkbox"/>
+       </label>
+       <h2 data-i18n="general.history">
+        Historique
+       </h2>
+       <label class="setting-card">
+        <span>
+         <strong data-i18n="interaction.scrollback">
+          Historique d’affichage
+         </strong>
+         <small data-i18n="interaction.scrollbackHint">
+          Nombre de lignes conservées par onglet, de 0 à 100
+                    000.
+         </small>
+        </span>
+        <input id="config-scrollback" max="100000" min="0" required="" type="number"/>
+       </label>
+      </section>
+      <section data-section="appearance" hidden="">
+       <h1 data-i18n="nav.appearance">
+        Apparence
+       </h1>
+       <p class="page-description" data-i18n="appearance.description">
+        Les changements enregistrés s’appliquent aussi aux terminaux
+                déjà ouverts.
+       </p>
+       <label class="setting-card">
+        <span>
+         <strong data-i18n="appearance.font">
+          Police du terminal
+         </strong>
+         <small data-i18n="appearance.fontHint">
+          Choisissez une police à chasse fixe installée dans Windows.
+         </small>
+        </span>
+        <select aria-label="Police du terminal" data-i18n-aria-label="appearance.font" id="config-font">
+         <option data-i18n="appearance.automaticFont" value="Cascadia Mono, Consolas, monospace">
+          Automatique · Cascadia Mono / Consolas
+         </option>
+        </select>
+       </label>
+       <label class="setting-card">
+        <span>
+         <strong data-i18n="appearance.fontSize">
+          Taille du texte
+         </strong>
+         <small data-i18n="appearance.fontSizeHint">
+          Entre 8 et 32 pixels.
+         </small>
+        </span>
+        <input id="config-font-size" max="32" min="8" required="" type="number"/>
+       </label>
+       <label class="setting-card">
+        <span>
+         <strong data-i18n="appearance.cursor">
+          Forme du curseur
+         </strong>
+        </span>
+        <select id="config-cursor">
+         <option data-i18n="appearance.cursorBar" value="bar">
+          Barre verticale
+         </option>
+         <option data-i18n="appearance.cursorBlock" value="block">
+          Bloc
+         </option>
+         <option data-i18n="appearance.cursorUnderline" value="underline">
+          Souligné
+         </option>
+        </select>
+       </label>
+       <label class="setting-card">
+        <span>
+         <strong data-i18n="appearance.cursorBlink">
+          Faire clignoter le curseur
+         </strong>
+        </span>
+        <input class="switch" id="config-blink" type="checkbox"/>
+       </label>
+       <div class="terminal-preview" id="appearance-preview">
+        <span class="preview-green">
+         utilisateur@debian
+        </span>
+        :
+        <span class="preview-blue">
+         ~
+        </span>
+        $ ls
+        <br/>
+        Documents   Projets   Téléchargements
+        <br/>
+        ▏
+       </div>
+       <h2 data-i18n="appearance.schemes">
+        Jeux de couleurs
+       </h2>
+       <p class="page-description" data-i18n="appearance.schemesHint">
+        Cinq jeux de couleurs pour vos sessions. Choisissez une ambiance
+                ; les réglages de taille et de curseur restent inchangés.
+       </p>
+       <div aria-label="Jeux de couleurs" data-i18n-aria-label="appearance.schemes" id="theme-options">
+       </div>
+       <input id="config-theme" type="hidden" value="campbell"/>
+      </section>
+      <section data-section="management" hidden="">
+       <h1 data-i18n="nav.management">
+        Gestion WSL
+       </h1>
+       <p class="page-description" data-i18n="management.description">
+        Consultez vos distributions, gérez leurs sessions et mettez WSL à jour.
+       </p>
+       <div class="management-heading">
+        <h2 data-i18n="management.distributions">
+         Distributions
+        </h2>
+        <button data-i18n="common.refresh" id="wsl-refresh" type="button">
+         Actualiser
+        </button>
+       </div>
+       <p class="hint" data-i18n="management.initialState" id="wsl-overview-state" role="status">
+        Ouvrez cette page pour charger l’état de WSL.
+       </p>
+       <div id="wsl-distributions">
+       </div>
+       <section aria-labelledby="wsl-update-heading" class="wsl-update-card">
+        <div class="management-heading">
+         <h2 data-i18n="management.global" id="wsl-update-heading">Moteur WSL</h2>
+         <button id="wsl-check-updates" type="button" class="icon-button" data-i18n-title="updates.sync" data-i18n-aria-label="updates.sync" title="Synchroniser" aria-label="Synchroniser"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10a8 8 0 0 0-14-5L3 8m0-5v5h5M4 14a8 8 0 0 0 14 5l3-3m-5 0h5v5"/></svg></button>
+        </div>
+        <p class="hint" hidden id="wsl-update-date"></p>
+        <div class="wsl-version-summary">
+         <details class="wsl-inline-details"><summary><span data-i18n="updates.installed">Version installée</span><strong id="wsl-installed-version">—</strong></summary><pre id="wsl-version-details"></pre></details>
+         <div class="wsl-release-summary"><span data-i18n="updates.available">Dernière stable</span><strong id="wsl-available-version">—</strong><button id="wsl-release-notes" type="button" disabled class="icon-button" data-i18n-title="updates.notes" data-i18n-aria-label="updates.notes"><img src="/assets/icons/github.svg" alt=""/></button></div>
+        </div>
+        <details class="wsl-inline-details"><summary data-i18n="management.status">Configuration actuelle</summary><pre id="wsl-current-status"></pre></details>
+        <p class="hint" data-i18n="updates.unchecked" id="wsl-update-status" role="status"></p>
+        <p class="hint" hidden id="wsl-installed-error"></p><p class="hint" hidden id="wsl-release-error"></p>
+        <div class="management-actions">
+         <button class="danger" data-i18n="management.shutdown" data-wsl-action="shutdown" type="button">Arrêter WSL</button>
+         <button data-i18n="management.update" data-wsl-action="update" disabled id="wsl-update" type="button">Mettre à jour WSL</button>
+        </div>
+        <p class="hint" data-i18n="management.shutdownHint"></p>
+        <p class="hint" data-i18n="updates.sourceHint"></p>
+       </section>
+      </section>
+      <section data-section="installation" hidden>       <div class="management-advanced">
+        <div class="installation-heading"><h2 data-i18n="nav.installation">Installation et sauvegarde</h2><span class="beta-badge" data-i18n="common.beta">Bêta</span></div>
+        <p class="hint" data-i18n="management.pathsHint">
+         Les chemins ci-dessous sont des chemins Windows. L’import et l’installation ajoutent une distribution ; ils ne remplacent pas une distribution existante.
+        </p>
+
+        <label class="setting-card">
+         <span>
+          <strong data-i18n="management.exportDistribution">
+           Distribution à sauvegarder
+          </strong>
+         </span>
+         <select aria-label="Distribution à sauvegarder" data-i18n-aria-label="management.exportDistribution" id="wsl-export-distribution">
+         </select>
+        </label>
+        <label class="setting-card stacked">
+         <span>
+          <strong data-i18n="management.exportFile">
+           Fichier de sauvegarde (.tar)
+          </strong>
+          <small data-i18n="management.exportHint">
+           Choisissez un nouveau fichier, par exemple D:\Sauvegardes\Debian.tar.
+          </small>
+         </span>
+         <input id="wsl-export-path" placeholder="D:\Sauvegardes\Debian.tar"/>
+        </label>
+        <button data-i18n="management.export" id="wsl-export" type="button">
+         Exporter la distribution
+        </button>
+        <h3 data-i18n="management.importHeading">
+         Importer une sauvegarde
+        </h3>
+        <label class="setting-card">
+         <span>
+          <strong data-i18n="management.newName">
+           Nouveau nom
+          </strong>
+         </span>
+         <input id="wsl-import-name" placeholder="Debian-test"/>
+        </label>
+        <label class="setting-card stacked">
+         <span>
+          <strong data-i18n="management.existingArchive">
+           Fichier .tar existant
+          </strong>
+         </span>
+         <input id="wsl-import-path" placeholder="D:\Sauvegardes\Debian.tar"/>
+        </label>
+        <label class="setting-card stacked">
+         <span>
+          <strong data-i18n="management.installLocation">
+           Nouveau dossier d’installation
+          </strong>
+         </span>
+         <input id="wsl-import-location" placeholder="D:\WSL\Debian-test"/>
+        </label>
+        <button data-i18n="management.import" id="wsl-import" type="button">
+         Importer
+        </button>
+        <h3 data-i18n="management.installHeading">
+         Installer une distribution
+        </h3>
+        <div class="management-actions">
+         <button data-i18n="management.online" data-wsl-action="listOnline" type="button">
+          Distributions disponibles
+         </button>
+        </div>
+        <label class="setting-card">
+         <span>
+          <strong data-i18n="management.catalogName">
+           Nom du catalogue WSL
+          </strong>
+          <small data-i18n="management.catalogHint">
+           Utilisez le nom indiqué par « Distributions disponibles ».
+          </small>
+         </span>
+         <input id="wsl-install-name" placeholder="Ubuntu-24.04"/>
+        </label>
+        <button data-i18n="management.install" id="wsl-install" type="button">
+         Installer sans ouvrir de session
+        </button>
+        <p class="hint" data-i18n="management.firstLaunchHint">
+         Après installation, ouvrez un terminal pour terminer la création du compte Linux si nécessaire.
+        </p>
+       </div>
+      </section>
+      <section data-section="wsl" hidden="">
+       <h1 data-i18n="common.wslSettings">
+        Paramètres WSL
+       </h1>
+       <p class="page-description" data-i18n="wsl.description">
+        Accédez à l’application de configuration WSL fournie par
+                Microsoft.
+       </p>
+       <label class="setting-card stacked">
+        <span>
+         <strong data-i18n="wsl.path">
+          Emplacement de WSL Settings
+         </strong>
+         <small data-i18n="wsl.pathHint">
+          Chemin de l’exécutable Windows.
+         </small>
+        </span>
+        <input id="config-wsl-path" maxlength="1024" required=""/>
+       </label>
+       <div class="setting-card">
+        <span>
+         <strong data-i18n="wsl.openSettings">
+          Ouvrir WSL Settings
+         </strong>
+         <small data-i18n="wsl.savedPathHint">
+          Les réglages WSL sont gérés dans l’application Microsoft.
+                    Enregistrez un nouveau chemin avant de l’ouvrir.
+         </small>
+        </span>
+        <button data-i18n="common.openExternal" id="open-wsl-settings" type="button">
+         Ouvrir ↗
+        </button>
+       </div>
+       <h2 data-i18n="nav.storage">
+        Stockage et configuration
+       </h2>
+       <p class="page-description" data-i18n="storage.description">
+        Retrouvez le disque de votre distribution et accédez aux
+                réglages globaux de WSL.
+       </p>
+       <div class="setting-card">
+        <label for="storage-distribution">
+         <strong data-i18n="common.distribution">
+          Distribution
+         </strong>
+         <small data-i18n="storage.registryHint">
+          Informations lues dans les enregistrements WSL de
+                    Windows.
+         </small>
+        </label>
+        <select aria-label="Distribution pour le stockage" data-i18n-aria-label="accessibility.storageDistribution" id="storage-distribution">
+        </select>
+        <button data-i18n="common.refresh" id="refresh-storage" type="button">
+         Actualiser
+        </button>
+       </div>
+       <div class="storage-details">
+        <dl>
+         <dt data-i18n="common.version">
+          Version
+         </dt>
+         <dd id="storage-version">
+          —
+         </dd>
+         <dt data-i18n="storage.disk">
+          Disque VHDX
+         </dt>
+         <dd id="storage-path">
+          —
+         </dd>
+         <dt data-i18n="storage.fileSize">
+          Taille logique du fichier
+         </dt>
+         <dd id="storage-size">
+          —
+         </dd>
+        </dl>
+        <button data-i18n="storage.openFolder" disabled="" id="open-storage" type="button">
+         Ouvrir le dossier dans l’Explorateur ↗
+        </button>
+        <p class="hint" data-i18n="storage.sizeHint">
+         La taille du fichier, l’espace alloué par Windows et la
+                  capacité affichée dans Linux peuvent différer.
+        </p>
+       </div>
+       <h2 data-i18n="storage.globalConfig">
+        Configuration globale de WSL2
+       </h2>
+       <div class="setting-card stacked">
+        <span>
+         <strong data-i18n="storage.configFile">
+          Fichier .wslconfig
+         </strong>
+         <small data-i18n="storage.configHint">
+          Réglages communs aux distributions WSL2 : mémoire,
+                    processeurs et autres options de la machine
+                    virtuelle.
+         </small>
+        </span>
+        <code id="wsl-config-path">
+         %USERPROFILE%\.wslconfig
+        </code>
+        <p class="hint" data-i18n="storage.locationHint" id="wsl-config-status" role="status">
+         Emplacement dans votre dossier utilisateur Windows.
+        </p>
+        <div class="configuration-actions">
+         <button data-i18n="storage.openConfig" disabled="" id="open-wsl-config" type="button">
+          Ouvrir dans le Bloc-notes ↗
+         </button>
+         <button data-i18n="storage.documentation" id="wsl-config-help" type="button">
+          Documentation Microsoft ↗
+         </button>
+        </div>
+       </div>
+       <p class="hint" data-i18n="storage.noWriteHint">
+        DooTTY ouvre uniquement le fichier existant. Il ne le crée pas
+                et ne l’enregistre pas à votre place. Aucun redémarrage de WSL
+                n’est lancé.
+       </p>
+      </section>
+      <section data-section="shortcuts" hidden="">
+       <h1 data-i18n="nav.shortcuts">
+        Raccourcis
+       </h1>
+       <p class="page-description" data-i18n="shortcuts.description">
+        Ctrl+C, Ctrl+D et les raccourcis du shell continuent d’être
+                transmis à Linux.
+       </p>
+       <dl class="shortcut-list">
+        <dt data-i18n="common.newTab">
+         Nouvel onglet
+        </dt>
+        <dd data-i18n="keys.newTab">
+         Ctrl+Maj+T
+        </dd>
+        <dt data-i18n="shortcuts.close">
+         Fermer l’onglet actif
+        </dt>
+        <dd data-i18n="keys.close">
+         Ctrl+Maj+W
+        </dd>
+        <dt data-i18n="shortcuts.cycle">
+         Onglet suivant / précédent
+        </dt>
+        <dd data-i18n="keys.cycle">
+         Ctrl+Tab / Ctrl+Maj+Tab
+        </dd>
+        <dt data-i18n="shortcuts.goTo">
+         Accéder à un onglet
+        </dt>
+        <dd data-i18n="shortcuts.numberKeys">
+         Ctrl+1 à Ctrl+9
+        </dd>
+        <dt data-i18n="common.appSettings">
+         Paramètres DooTTY
+        </dt>
+        <dd>
+         Ctrl+,
+        </dd>
+        <dt data-i18n="shortcuts.clipboard">
+         Copier / coller
+        </dt>
+        <dd data-i18n="keys.clipboard">
+         Ctrl+Maj+C / Ctrl+Maj+V
+        </dd>
+        <dt data-i18n="common.selectAll">
+         Tout sélectionner
+        </dt>
+        <dd data-i18n="keys.selectAll">
+         Ctrl+Maj+A
+        </dd>
+        <dt data-i18n="common.search">
+         Rechercher
+        </dt>
+        <dd data-i18n="keys.search">
+         Ctrl+Maj+F
+        </dd>
+        <dt data-i18n="shortcuts.zoom">
+         Agrandir / réduire / réinitialiser
+        </dt>
+        <dd data-i18n="shortcuts.zoomKeys">
+         Ctrl+Plus / Ctrl+Moins / Ctrl+0
+        </dd>
+       </dl>
+      </section>
+      <section data-section="about" hidden="">
+       <h1 data-i18n="about.heading">
+        À propos de DooTTY
+       </h1>
+       <p class="page-description">
+        Your native WSL client.
+       </p>
+       <div class="setting-card">
+        <span>
+         <strong>
+          DooTTY 0.0.5
+         </strong>
+         <small>
+          Your Linux. Your Terminal. Your Windows.
+         </small>
+        </span>
+        <img alt="Logo DooTTY" class="brand-logo" data-i18n-alt="accessibility.logo" src="/assets/branding/app-icon.png"/>
+       </div>
+       <p data-i18n="about.description">
+        Un client Windows dédié à vos distributions WSL locales.
+       </p>
+       <p data-i18n="about.technology">
+        Interface inspirée de Windows Terminal. Terminal xterm.js,
+                connexion native ConPTY et WSL, application Tauri et Rust.
+       </p>
+       <button id="about-github" type="button" class="github-link"><img src="/assets/icons/github.svg" alt=""/><span data-i18n="about.github">DooSys sur GitHub</span></button>
+       <p class="hint" data-i18n="about.icons">
+        Icônes de distributions : Simple Icons et projets Linux. Sources et licences fournies dans les notices de l’archive.
+       </p>
+      </section>
+     </div>
+     <footer id="settings-footer">
+      <span id="save-status" role="status">
+      </span>
+      <button class="primary" data-i18n="common.save" id="save-settings" type="submit">
+       Enregistrer
+      </button>
+      <button data-i18n="common.discardChanges" id="discard-settings" type="button">
+       Annuler les modifications
+      </button>
+     </footer>
+    </form>
+   </section>
+  </main>
+  <dialog aria-labelledby="wsl-action-title" id="wsl-action-dialog">
+   <h2 data-i18n="management.confirmHeading" id="wsl-action-title">
+    Confirmer l’opération WSL
+   </h2>
+   <p id="wsl-action-description">
+   </p>
+   <code id="wsl-action-command">
+   </code>
+   <div>
+    <button autofocus="" data-i18n="common.cancel" id="wsl-action-cancel" type="button">
+     Annuler
+    </button>
+    <button class="primary" data-i18n="common.confirm" id="wsl-action-confirm" type="button">
+     Confirmer
+    </button>
+   </div>
+  </dialog>
+  <dialog aria-labelledby="close-window-title" id="close-window-dialog">
+   <h2 data-i18n="closing.title" id="close-window-title">
+    Fermer DooTTY ?
+   </h2>
+   <p id="close-window-message">
+   </p>
+   <p data-i18n="closing.unsaved" hidden="" id="close-window-unsaved">
+    Les modifications des paramètres ne sont pas enregistrées.
+   </p>
+   <div>
+    <button autofocus="" data-i18n="common.cancel" id="cancel-close-window" type="button">
+     Annuler
+    </button>
+    <button class="primary" data-i18n="closing.confirm" id="confirm-close-window" type="button">
+     Fermer la fenêtre
+    </button>
+   </div>
+  </dialog>
+  <dialog id="discard-dialog">
+   <h2 data-i18n="settings.discardHeading">
+    Abandonner les modifications ?
+   </h2>
+   <p data-i18n="settings.unsavedHint">
+    Les réglages n’ont pas été enregistrés.
+   </p>
+   <div>
+    <button data-i18n="settings.keepEditing" id="keep-editing">
+     Continuer à modifier
+    </button>
+    <button data-i18n="settings.discard" id="confirm-discard">
+     Abandonner
+    </button>
+   </div>
+  </dialog>
+  <script src="/src/main.ts" type="module">
+  </script>
+ </body>
+</html>

@@ -1,0 +1,42 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "DooTTY",
+  "mainBinaryName": "DooTTY",
+  "version": "0.0.5",
+  "identifier": "com.doosys.dootty",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://127.0.0.1:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "DooTTY \u2014 Your native WSL client.",
+        "decorations": false,
+        "shadow": true,
+        "width": 1100,
+        "height": 720,
+        "minWidth": 640,
+        "minHeight": 360,
+        "backgroundColor": "#0c0c0c"
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; connect-src ipc: http://ipc.localhost; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'none'; frame-src 'none'; form-action 'none'",
+      "capabilities": [
+        "main"
+      ]
+    }
+  },
+  "bundle": {
+    "active": false,
+    "icon": [
+      "icons/icon.ico",
+      "icons/32x32.png",
+      "icons/128x128.png"
+    ]
+  }
+}

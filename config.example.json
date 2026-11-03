@@ -1,0 +1,25 @@
+{
+  "language": "fr",
+  "distribution": "Debian",
+  "username": null,
+  "directory": "~",
+  "appearance": {
+    "fontFamily": "Cascadia Mono, Consolas, monospace",
+    "fontSize": 14,
+    "theme": "campbell",
+    "cursorStyle": "bar",
+    "cursorBlink": true,
+    "scrollback": 10000
+  },
+  "interaction": {
+    "copyOnSelect": false,
+    "rightClickPaste": false,
+    "trimCopyWhitespace": false,
+    "trimPasteWhitespace": false,
+    "trimPasteNewlines": false,
+    "rectangularSelection": false,
+    "warnOnClose": true
+  },
+  "wslSettingsPath": "C:\\Program Files\\WSL\\wslsettings\\wslsettings.exe",
+  "monitoringEnabled": true
+}

@@ -1,0 +1,56 @@
+[
+  {
+    "name": "alloc-stdlib",
+    "version": "0.3.0",
+    "url": "https://raw.githubusercontent.com/dropbox/rust-alloc-no-stdlib/0a81fd6928ea3b33c8cd484aa4575d50ffb98012/LICENSE",
+    "file": "alloc-stdlib-0.3.0.txt",
+    "sha256": "c0c56f26d9c051cac4d200c34c84e7ae9aaa853e01a982a1df08b09931e518ae"
+  },
+  {
+    "name": "clipboard-win",
+    "version": "5.4.3",
+    "url": "https://raw.githubusercontent.com/DoumanAsh/clipboard-win/ed27008ae5d1f10cfbb266de039f0fb35fd05a56/LICENSE",
+    "file": "clipboard-win-5.4.3.txt",
+    "sha256": "c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566"
+  },
+  {
+    "name": "selectors",
+    "version": "0.38.0",
+    "file": "selectors-0.38.0.txt",
+    "url": "https://raw.githubusercontent.com/spdx/license-list-data/main/text/MPL-2.0.txt",
+    "sha256": "66a3107d5ad6a058aab753eaac2047ccb2ed0e39465dd0fe5844da3e300d5172"
+  },
+  {
+    "name": "webview2-com",
+    "version": "0.39.1",
+    "url": "https://raw.githubusercontent.com/wravery/webview2-rs/edc2caf886175ccaebe86078c9cfe1ae2a187328/LICENSE",
+    "file": "webview2-com-0.39.1.txt",
+    "sha256": "0dcf41516e608bbcb6cdc5229feb7b86fe4a643b85e7df251133c93408fdac73"
+  },
+  {
+    "name": "webview2-com-macros",
+    "version": "0.8.1",
+    "url": "https://raw.githubusercontent.com/wravery/webview2-rs/dffa41a8a46d3f5565eefbff2de57d38d399f158/LICENSE",
+    "file": "webview2-com-macros-0.8.1.txt",
+    "sha256": "0dcf41516e608bbcb6cdc5229feb7b86fe4a643b85e7df251133c93408fdac73"
+  },
+  {
+    "name": "webview2-com-sys",
+    "version": "0.39.1",
+    "url": "https://raw.githubusercontent.com/wravery/webview2-rs/edc2caf886175ccaebe86078c9cfe1ae2a187328/LICENSE",
+    "file": "webview2-com-sys-0.39.1.txt",
+    "sha256": "0dcf41516e608bbcb6cdc5229feb7b86fe4a643b85e7df251133c93408fdac73"
+  },
+  {
+    "name": "Microsoft.Web.WebView2 SDK loader",
+    "version": "1.0.3800.47",
+    "url": "https://api.nuget.org/v3-flatcontainer/microsoft.web.webview2/1.0.3800.47/microsoft.web.webview2.1.0.3800.47.nupkg",
+    "file": "microsoft-webview2-sdk-1.0.3800.47.txt",
+    "archive_members": [
+      "LICENSE.txt",
+      "NOTICE.txt"
+    ],
+    "sha256": "18bb1616e344d4ea7cb1cf8429a78e78b9b2c18e0288035cb272a4e82d6b3783",
+    "loader_sha256": "89c6b872783b8f6c3cedbff618adb42082d455c615453ae10cfc753f1e8f25d8"
+  }
+]
