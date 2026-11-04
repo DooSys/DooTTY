@@ -23,6 +23,7 @@ import { prepareCopy, preparePaste } from "./clipboard";
 import { installRectangularSelection } from "./rectangular-selection";
 import { clipboardFits, historyLines, singleFlight } from "./resources";
 import { initializeMonitoring } from "./monitoring";
+import { installTerminalLinks } from "./terminal-links";
 
 type SessionEvent =
   | { kind: "data"; bytes: number[] }
@@ -157,7 +158,6 @@ class TerminalTab {
   readonly terminal = new Terminal({
     allowProposedApi: false,
     allowTransparency: false,
-    linkHandler: { allowNonHttpProtocols: false, activate: (event, uri) => { if (event.ctrlKey && native) run(invoke("open_external_url", { url: uri })); } },
   });
   readonly fit = new FitAddon();
   readonly search = new SearchAddon();
@@ -192,6 +192,9 @@ class TerminalTab {
     this.pane.id = this.key;
     this.terminal.loadAddon(this.fit);
     this.terminal.loadAddon(this.search);
+    installTerminalLinks(this.terminal, uri => {
+      if (native) run(invoke("open_external_url", { url: uri }));
+    }, () => t("terminal.openLinkHint"));
     el("terminal-panes").append(this.pane);
     this.terminal.open(this.pane);
     installRectangularSelection(this.pane, () => this.rectangularSelection, () => this.terminal.modes.mouseTrackingMode !== "none");

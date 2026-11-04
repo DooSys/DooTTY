@@ -335,5 +335,8 @@
     "openFolder": "Open the profile folder in Windows Explorer",
     "profileFolder": "Profile folder",
     "stopped": "Distribution stopped: reconnect the terminal."
+  },
+  "terminal": {
+    "openLinkHint": "Ctrl+click to open in your browser"
   }
 }
