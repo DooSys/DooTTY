@@ -87,6 +87,11 @@ signature = value.index(struct.pack('<I', 0xFEEF04BD))
 major_minor, patch_build = struct.unpack_from('<II', value, signature + 8)
 file_version = (major_minor >> 16, major_minor & 0xFFFF, patch_build >> 16, patch_build & 0xFFFF)
 assert file_version == tuple(map(int, version.split('.'))) + (0,), (version, file_version)
+# Validate human-readable Windows version resource metadata in both EXEs.
+for field in ('CompanyName', 'ProductName', 'FileDescription', 'LegalCopyright'):
+    assert field.encode('utf-16le') in value, f'Missing Windows version key: {field}'
+for content in ('DooSys', 'DooTTY', '2026'):
+    assert content.encode('utf-16le') in value, f'Missing Windows version metadata: {content}'
 
 imports = []
 descriptor = offset(struct.unpack_from('<I', data, directories + 8)[0])
