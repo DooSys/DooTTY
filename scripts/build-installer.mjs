@@ -89,7 +89,9 @@ const definitions = {
   MANIFEST: manifest, SIZE_KB: Math.ceil(files.reduce((sum, file) => sum + statSync(path.join(payload, file)).size, 0) / 1024),
 };
 const option = process.platform === 'win32' ? '/' : '-';
-run(compiler, [`${option}WX`, `${option}V2`, ...Object.entries(definitions).map(([key, value]) => `${option}D${key}=${value}`), 'installer/dootty.nsi']);
+// Unicode output does not determine how makensis decodes BOM-less source files.
+// Windows otherwise uses its ANSI code page and corrupts our French UTF-8 strings.
+run(compiler, [`${option}INPUTCHARSET`, 'UTF8', `${option}WX`, `${option}V2`, ...Object.entries(definitions).map(([key, value]) => `${option}D${key}=${value}`), 'installer/dootty.nsi']);
 if (!existsSync(setup)) throw Error('Installer was not produced');
 run(python, ['scripts/verify-windows.py', '--installer', '--binary', setup]);
 const data = readFileSync(setup);

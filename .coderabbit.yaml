@@ -1,0 +1,49 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: fr-FR
+
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  auto_review:
+    enabled: true
+    drafts: false
+    auto_incremental_review: true
+  path_instructions:
+    - path: "src-tauri/src/**/*.rs"
+      instructions: |
+        Prioriser les régressions fonctionnelles et de sécurité : gestion des
+        erreurs, appels Win32/FFI, exécution des processus, validation des arguments
+        et chemins, nettoyage des sessions ConPTY, threads et handles.
+        Préserver les préférences et l'isolation du mode portable. Les actions WSL
+        utilisent des arguments séparés, sans shell ni élévation globale.
+    - path: "src/**/*.{ts,tsx}"
+      instructions: |
+        Vérifier les opérations asynchrones, courses entre onglets, cycle de vie
+        xterm, désabonnements, mémoire bornée et validation des données IPC.
+        Préserver la sélection, le presse-papiers et la saisie du terminal.
+        Signaler les régressions et proposer des tests ciblés sur le comportement.
+    - path: "src/locales/*.json"
+      instructions: |
+        Maintenir la parité des clés français/anglais et des interpolations.
+        Les sorties du terminal doivent rester du texte, sans injection HTML.
+    - path: "src-tauri/capabilities/**"
+      instructions: |
+        Examiner toute extension des permissions Tauri. Ne pas ajouter de droit
+        shell ou réseau générique si une commande native validée suffit.
+    - path: "installer/**"
+      instructions: |
+        Vérifier l'encodage UTF-8, les chemins NSIS sous Windows, les installations
+        et mises à jour sans perte de préférences, la fermeture sans arrêt forcé,
+        le mode portable et la suppression limitée aux fichiers appartenant à DooTTY.
+    - path: "scripts/**"
+      instructions: |
+        Vérifier la portabilité Windows/WSL, les erreurs de processus et les
+        contrôles des binaires et licences. Les artefacts publics ne doivent pas
+        inclure de chemins personnels, secrets ou fichiers privés de .local.
+    - path: ".github/workflows/**"
+      instructions: |
+        Vérifier les permissions minimales, les actions épinglées et l'isolation
+        des builds de PR vis-à-vis des secrets et publications de releases.
+        Ne jamais exécuter le code d'une PR non fiable avec un jeton privilégié.
