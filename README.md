@@ -9,7 +9,7 @@
 <p align="center"><strong>Your native WSL client.</strong></p>
 
 <p align="center">
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.0.6-00b8d9" alt="Version 0.0.6"/></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.0.7-00b8d9" alt="Version 0.0.7"/></a>
   <img src="https://img.shields.io/badge/Windows-11-0078D4" alt="Windows 11"/>
   <img src="https://img.shields.io/badge/WSL-Linux-FCC624?logo=linux&amp;logoColor=black" alt="WSL — Linux"/>
   <img src="https://img.shields.io/badge/Rust-Tauri-24C8DB?logo=rust&amp;logoColor=white" alt="Rust et Tauri"/>
@@ -47,7 +47,7 @@ environnement Linux sous Windows, avec ses distributions et ses outils au même 
 
 ## Démarrer
 
-Téléchargez `DooTTY-0.0.6-setup.exe` depuis les
+Téléchargez `DooTTY-0.0.7-setup.exe` depuis les
 [versions GitHub](https://github.com/DooSys/DooTTY/releases). Choisissez une
 **installation personnelle** ou le **mode portable** dans un dossier de votre choix.
 Les réglages sont conservés lors des mises à jour.

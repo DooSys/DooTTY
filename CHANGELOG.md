@@ -1,5 +1,14 @@
 # Changements
 
+## 0.0.7
+
+- Lecture UTF-8 explicite des sources NSIS pour préserver les accents de l’installeur Windows.
+- Fenêtre agrandie limitée à la zone de travail de l’écran, au-dessus de la barre des tâches.
+- Détection des liens HTTP(S) du terminal et ouverture par Ctrl+clic dans le navigateur par défaut, y compris les liens OSC 8.
+- Métadonnées Windows de l’application et de l’installeur harmonisées avec l’éditeur DooSys.
+- Attestation de provenance des installeurs publiés via GitHub Actions ; elle ne constitue pas une signature Authenticode.
+- Configuration CodeRabbit adaptée au projet et raccourci des liens ajouté au guide d’utilisation.
+
 ## 0.0.6
 
 - Titre de distribution conservé pendant le titre Windows provisoire, sans attente ajoutée.
