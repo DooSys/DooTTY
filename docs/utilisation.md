@@ -105,6 +105,7 @@ d'import/export sont des chemins Windows absolus sur un disque local.
 | Coller | Maj+Inser |
 | Tout sélectionner | Ctrl+Maj+A |
 | Rechercher | Ctrl+Maj+F |
+| Ouvrir un lien HTTP(S) dans le navigateur par défaut | Ctrl+clic |
 | Zoom / réduire / réinitialiser | Ctrl+Plus / Ctrl+Moins / Ctrl+0 |
 
 Ctrl+C, Ctrl+D, Ctrl+Z et AltGr restent transmis au terminal. Dans les applications

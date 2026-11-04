@@ -2,7 +2,7 @@
   "version": "0.0.6",
   "target": "x86_64-pc-windows-msvc",
   "cargo_lock_sha256": "a37de4aff5e9f49174e48b038145cc77f90ac3f734db8468905fc95051faa434",
-  "npm_lock_sha256": "7a1d47770d8f59fdcb6e10035c3e028dd6d5ed5747ca02095bf672a7e77a8b62",
+  "npm_lock_sha256": "4808bfcca265c66597ddc96fd979660ffc4e0b18e03766d8db77d969d95f91c0",
   "packages": [
     {
       "name": "@tauri-apps/api",
@@ -32,6 +32,16 @@
       "ecosystem": "npm",
       "license": "MIT",
       "source": "https://www.npmjs.com/package/@xterm/addon-search/v/0.16.0",
+      "notice_files": [
+        "LICENSE"
+      ]
+    },
+    {
+      "name": "@xterm/addon-web-links",
+      "version": "0.12.0",
+      "ecosystem": "npm",
+      "license": "MIT",
+      "source": "https://www.npmjs.com/package/@xterm/addon-web-links/v/0.12.0",
       "notice_files": [
         "LICENSE"
       ]

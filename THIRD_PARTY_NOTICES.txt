@@ -2503,6 +2503,14 @@ Source: https://www.npmjs.com/package/@xterm/addon-search/v/0.16.0
 
 
 ========================================================================
+@xterm/addon-web-links 0.12.0 [npm]
+License: MIT
+Source: https://www.npmjs.com/package/@xterm/addon-web-links/v/0.12.0
+
+  LICENSE: [T170]
+
+
+========================================================================
 @xterm/xterm 6.0.0 [npm]
 License: MIT
 Source: https://www.npmjs.com/package/@xterm/xterm/v/6.0.0

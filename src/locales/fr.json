@@ -335,5 +335,8 @@
     "openFolder": "Ouvrir le dossier du profil dans l’Explorateur Windows",
     "profileFolder": "Dossier du profil",
     "stopped": "Distribution arrêtée : reconnectez le terminal."
+  },
+  "terminal": {
+    "openLinkHint": "Ctrl+clic pour ouvrir dans le navigateur"
   }
 }
