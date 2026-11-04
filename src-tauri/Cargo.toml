@@ -1,6 +1,6 @@
 [package]
 name = "dootty"
-version = "0.0.6"
+version = "0.0.7"
 description = "Your native WSL client."
 license = "MIT"
 authors = ["DooSys"]
