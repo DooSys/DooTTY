@@ -11,6 +11,8 @@ mod platform;
 mod query_windows;
 #[path = "updates_windows.rs"]
 mod updates_windows;
+#[path = "window_bounds_windows.rs"]
+mod window_bounds_windows;
 #[path = "windows_util.rs"]
 mod windows_util;
 use std::collections::HashMap;
@@ -402,9 +404,13 @@ fn run_inner() -> Result<(), String> {
         )
         .manage(layout)
         .setup(move |app| {
-            tauri::WebviewWindowBuilder::from_config(app.handle(), &app.config().app.windows[0])?
-                .data_directory(webview.clone())
-                .build()?;
+            let window = tauri::WebviewWindowBuilder::from_config(
+                app.handle(),
+                &app.config().app.windows[0],
+            )?
+            .data_directory(webview.clone())
+            .build()?;
+            window_bounds_windows::install(&window)?;
             Ok(())
         })
         .manage(Sessions::default())
