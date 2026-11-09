@@ -22,6 +22,7 @@ export interface WorkflowTab {
   copy(): Promise<void>;
   paste(): Promise<void>;
   start(): Promise<void>;
+  clearHistory(): void;
   rename(name: string): void;
   setReadOnly(value: boolean): void;
 }
@@ -199,7 +200,7 @@ export function initializeTerminalWorkflow(hooks: Hooks) {
         label: t("workflow.clear"),
         enabled: tab.terminal.buffer.active.type === "normal",
         run: () => {
-          tab.terminal.clear();
+          tab.clearHistory();
           focus();
         },
       },

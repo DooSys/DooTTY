@@ -270,12 +270,27 @@ try {
     ),
     /READONLY OUTPUT/,
   );
+  await page.keyboard.press("Control+Shift+F");
+  await page.locator("#query").fill("READONLY OUTPUT");
+  await page.locator("#query").press("Enter");
+  assert(
+    (await page
+      .locator(".terminal-pane:not([hidden]) .xterm-selection div")
+      .count()) > 0,
+  );
   await palette("effacer");
   await page.locator("#command-query").press("Enter");
   await page.waitForTimeout(50);
   assert.doesNotMatch(
     await page.locator(".terminal-pane:not([hidden]) .xterm-rows").innerText(),
     /READONLY OUTPUT/,
+  );
+  await page.locator("#query").press("Enter");
+  assert.equal(
+    await page
+      .locator(".terminal-pane:not([hidden]) .xterm-selection div")
+      .count(),
+    0,
   );
   await context("closeOthers");
   await page.locator("#close-others-dialog button[value=cancel]").click();

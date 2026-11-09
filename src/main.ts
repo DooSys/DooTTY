@@ -163,7 +163,7 @@ class TerminalTab {
     allowTransparency: false,
   });
   readonly fit = new FitAddon();
-  readonly search = new SearchAddon();
+  search = new SearchAddon();
   readonly pane = document.createElement("div");
   readonly button: HTMLDivElement;
   readonly select: HTMLButtonElement;
@@ -271,6 +271,16 @@ class TerminalTab {
     this.select.title = `${this.title.textContent}${this.readOnly ? " · " + t("workflow.readOnlyState") : ""}`;
     this.select.setAttribute("aria-label", this.select.title);
     this.button.querySelector(".tab-close")?.setAttribute("aria-label",t("tabs.close",{title:this.title.textContent}));
+  }
+  clearHistory(): void {
+    if (this.closed || this.terminal.buffer.active.type !== "normal") return;
+    // Clearing xterm does not invalidate SearchAddon's retained line cache.
+    this.search.dispose();
+    this.terminal.clearSelection();
+    this.terminal.clear();
+    this.search = new SearchAddon();
+    this.terminal.loadAddon(this.search);
+    this.terminal.focus();
   }
   rename(name: string): void { this.customTitle = name.slice(0,80) || null; this.updateTitle(); }
   setReadOnly(value: boolean): void {
