@@ -17,6 +17,76 @@ pub fn webview_available() -> bool {
     }
 }
 
+pub fn export_terminal_text(parent: isize, text: String) -> Result<bool, String> {
+    use windows::{
+        core::{w, HRESULT},
+        Win32::{
+            Foundation::HWND,
+            System::Com::{
+                CoCreateInstance, CoInitializeEx, CoTaskMemFree, CoUninitialize,
+                CLSCTX_INPROC_SERVER, COINIT_APARTMENTTHREADED,
+            },
+            UI::Shell::{
+                Common::COMDLG_FILTERSPEC, FileSaveDialog, IFileSaveDialog, FOS_FORCEFILESYSTEM,
+                FOS_NOCHANGEDIR, FOS_OVERWRITEPROMPT, FOS_STRICTFILETYPES, SIGDN_FILESYSPATH,
+            },
+        },
+    };
+    if text.len() > dootty::terminal_export::MAX_BYTES {
+        return Err("Export supérieur à 8 Mio.".into());
+    }
+    unsafe {
+        CoInitializeEx(None, COINIT_APARTMENTTHREADED)
+            .ok()
+            .map_err(|e| e.to_string())?;
+        let result = (|| -> Result<bool, String> {
+            let dialog: IFileSaveDialog =
+                CoCreateInstance(&FileSaveDialog, None, CLSCTX_INPROC_SERVER)
+                    .map_err(|e| e.to_string())?;
+            dialog
+                .SetOptions(
+                    dialog.GetOptions().map_err(|e| e.to_string())?
+                        | FOS_FORCEFILESYSTEM
+                        | FOS_OVERWRITEPROMPT
+                        | FOS_STRICTFILETYPES
+                        | FOS_NOCHANGEDIR,
+                )
+                .map_err(|e| e.to_string())?;
+            dialog
+                .SetFileTypes(&[COMDLG_FILTERSPEC {
+                    pszName: w!("Texte / Text (*.txt)"),
+                    pszSpec: w!("*.txt"),
+                }])
+                .map_err(|e| e.to_string())?;
+            dialog
+                .SetDefaultExtension(w!("txt"))
+                .map_err(|e| e.to_string())?;
+            dialog
+                .SetFileName(w!("DooTTY-terminal.txt"))
+                .map_err(|e| e.to_string())?;
+            if let Err(e) = dialog.Show(Some(HWND(parent as _))) {
+                if e.code() == HRESULT(0x800704c7u32 as i32) {
+                    return Ok(false);
+                }
+                return Err(e.to_string());
+            }
+            let name = dialog
+                .GetResult()
+                .and_then(|item| item.GetDisplayName(SIGDN_FILESYSPATH))
+                .map_err(|e| e.to_string())?;
+            let path = name.to_string();
+            CoTaskMemFree(Some(name.0.cast()));
+            dootty::terminal_export::write_text(
+                std::path::Path::new(&path.map_err(|e| e.to_string())?),
+                &text,
+            )?;
+            Ok(true)
+        })();
+        CoUninitialize();
+        result
+    }
+}
+
 /// A matching AppUserModelID lets Windows associate the running window and shortcut.
 pub fn create_shortcut(link: std::path::PathBuf, target: std::path::PathBuf) -> Result<(), String> {
     use windows::{

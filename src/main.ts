@@ -6,6 +6,7 @@ import { SearchAddon } from "@xterm/addon-search";
 import { InputQueue } from "./transport";
 import {
   defaults,
+  sameConfig,
   themes,
   terminalTheme,
   formatBytes,
@@ -24,6 +25,7 @@ import { installRectangularSelection } from "./rectangular-selection";
 import { clipboardFits, historyLines, singleFlight } from "./resources";
 import { initializeMonitoring } from "./monitoring";
 import { installTerminalLinks } from "./terminal-links";
+import { initializeTerminalWorkflow } from "./terminal-workflow";
 
 type SessionEvent =
   | { kind: "data"; bytes: number[] }
@@ -43,6 +45,7 @@ let savingConfig = false;
 const tabs: TerminalTab[] = [];
 const encoder = new TextEncoder();
 let monitoring: ReturnType<typeof initializeMonitoring> | undefined;
+let workflow: ReturnType<typeof initializeTerminalWorkflow> | undefined;
 
 function showError(error: unknown): void {
   el("notice-text").textContent = String(
@@ -57,16 +60,17 @@ function activeTerminal(): TerminalTab | undefined {
   return tabs.find((tab) => tab.key === activeKey);
 }
 function updateActions(): void {
+  workflow?.refresh();
   monitoring?.sync();
   const tab = activeTerminal();
   for (const id of ["copy", "paste", "select-all", "search-toggle"])
-    el<HTMLButtonElement>(id).disabled = !tab;
+    el<HTMLButtonElement>(id).disabled = !tab || (id === "paste" && (tab.readOnly || tab.sessionId === null));
   el<HTMLButtonElement>("reconnect").disabled =
     !tab || tab.sessionId !== null || tab.connecting;
   el<HTMLButtonElement>("new-tab").disabled = !booted || tabs.length >= 32;
   el<HTMLButtonElement>("menu-new").disabled = !booted || tabs.length >= 32;
   document
-    .querySelectorAll<HTMLButtonElement>("[data-launch-distribution]")
+    .querySelectorAll<HTMLButtonElement>("[data-launch-distribution], [data-launch-profile]")
     .forEach((button) => {
       button.disabled = !booted || tabs.length >= 32;
     });
@@ -160,7 +164,7 @@ class TerminalTab {
     allowTransparency: false,
   });
   readonly fit = new FitAddon();
-  readonly search = new SearchAddon();
+  search = new SearchAddon();
   readonly pane = document.createElement("div");
   readonly button: HTMLDivElement;
   readonly select: HTMLButtonElement;
@@ -170,6 +174,9 @@ class TerminalTab {
   closed = false;
   expectedStop = false;
   rectangularSelection = false;
+  readOnly = false;
+  private shellTitle = "";
+  private customTitle: string | null = null;
   private generation = 0;
   private hasShellTitle = false;
   private input: InputQueue | null = null;
@@ -178,13 +185,15 @@ class TerminalTab {
   private lastSize: { id: number; cols: number; rows: number } | null = null;
   private output: Channel<SessionEvent> | null = null;
 
-  constructor(readonly profile: LaunchProfile) {
+  constructor(readonly profile: LaunchProfile, name?: string) {
+    this.customTitle = name ?? null;
     const tab = makeTab(this.key, profile.distribution, distributionIcon(profile.distribution), () =>
       closeTab(this),
     );
     this.button = tab.button;
     this.select = tab.select;
     this.title = tab.title;
+    this.updateTitle();
     this.pane.className = "terminal-pane";
     this.pane.dataset.pane = this.key;
     this.pane.setAttribute("role", "tabpanel");
@@ -208,15 +217,15 @@ class TerminalTab {
     this.pane.addEventListener("paste", event => {
       event.preventDefault(); event.stopImmediatePropagation();
       if (this.sessionId === null) return;
-      if (event.clipboardData) this.pasteText(event.clipboardData.getData("text/plain"));
+      if (event.clipboardData) run(this.pasteText(event.clipboardData.getData("text/plain")));
       else run(this.paste());
     }, true);
     this.applyAppearance();
     this.terminal.onData((data) => {
-      if (this.sessionId !== null) this.input?.push(encoder.encode(data));
+      if (!this.readOnly && this.sessionId !== null) this.input?.push(encoder.encode(data));
     });
     this.terminal.onBinary((data) => {
-      if (this.sessionId !== null)
+      if (!this.readOnly && this.sessionId !== null)
         this.input?.push(
           Uint8Array.from(data, (char) => char.charCodeAt(0) & 255),
         );
@@ -227,8 +236,8 @@ class TerminalTab {
       if (!this.hasShellTitle && /^[a-z]:[\\/](?:[^\\/\r\n]+[\\/])*(?:system32|sysnative)[\\/]wsl\.exe(?:\s.*)?$/i.test(title.trim())) return;
       if (title) this.hasShellTitle = true;
       delete this.select.dataset.i18nTitle;
-      this.title.textContent = title || this.profile.distribution;
-      this.select.title = title || this.profile.distribution;
+      this.shellTitle = title;
+      this.updateTitle();
     });
     this.terminal.onSelectionChange(() => {
       if (config.interaction.copyOnSelect && this.terminal.hasSelection())
@@ -255,6 +264,38 @@ class TerminalTab {
       },
       true,
     );
+  }
+  updateTitle(): void {
+    this.title.textContent = this.customTitle || this.shellTitle || this.profile.distribution;
+    if (this.customTitle) this.title.dataset.customName = this.customTitle;
+    else delete this.title.dataset.customName;
+    this.select.title = `${this.title.textContent}${this.readOnly ? " · " + t("workflow.readOnlyState") : ""}`;
+    this.select.setAttribute("aria-label", this.select.title);
+    this.button.querySelector(".tab-close")?.setAttribute("aria-label",t("tabs.close",{title:this.title.textContent}));
+  }
+  clearHistory(): void {
+    if (this.closed || this.terminal.buffer.active.type !== "normal") return;
+    // ConPTY keeps its own screen and cursor. Terminal.clear() relocates xterm's
+    // cursor without informing ConPTY, corrupting its subsequent delta redraws.
+    // ED 3 removes scrollback only and is parsed in order with session output.
+    this.terminal.write("\x1b[3J", () => {
+      if (this.closed) return;
+      // Clearing history does not invalidate SearchAddon's retained line cache.
+      this.search.dispose();
+      this.terminal.clearSelection();
+      this.search = new SearchAddon();
+      this.terminal.loadAddon(this.search);
+      if (activeKey === this.key) this.terminal.focus();
+    });
+  }
+  rename(name: string): void { this.customTitle = name.slice(0,80) || null; this.updateTitle(); }
+  setReadOnly(value: boolean): void {
+    this.readOnly = value;
+    this.terminal.options.disableStdin = value;
+    this.input?.cancel(); this.input = null;
+    const id = this.sessionId;
+    if (!value && id !== null) this.input = new InputQueue(bytes => this.readOnly || this.sessionId !== id ? Promise.resolve() : invoke("write_session",{sessionId:id,bytes}), showError);
+    this.button.classList.toggle("read-only",value); this.updateTitle(); updateActions();
   }
   applyAppearance(): void {
     this.setRectangularSelection(config.interaction.rectangularSelection);
@@ -316,7 +357,7 @@ class TerminalTab {
     this.button.dataset.state = "connecting";
     this.select.title = t("tabs.connecting");
     this.select.dataset.i18nTitle = "tabs.connecting";
-    this.title.textContent = this.profile.distribution;
+    this.shellTitle = ""; this.updateTitle();
     this.terminal.reset();
     updateActions();
     if (!native) {
@@ -385,7 +426,7 @@ class TerminalTab {
       if (!exited) {
         this.sessionId = id;
         this.input = new InputQueue(
-          (bytes) => invoke("write_session", { sessionId: id, bytes }),
+          (bytes) => this.readOnly || this.sessionId !== id ? Promise.resolve() : invoke("write_session", { sessionId: id, bytes }),
           showError,
         );
         this.button.dataset.state = "connected";
@@ -418,10 +459,18 @@ class TerminalTab {
     this.rectangularSelection = enabled;
     this.pane.classList.toggle("rectangle-mode", enabled);
   }
-  private pasteText(text: string): void {
+  private async pasteText(text: string): Promise<void> {
+    if (this.closed || this.readOnly || this.sessionId === null) return;
     if (!clipboardFits(text)) { showError(t("clipboard.tooLarge")); return; }
     const prepared = preparePaste(text, config.interaction);
-    if (prepared) this.terminal.paste(prepared);
+    const id = this.sessionId, generation = this.generation;
+    if (!prepared) return;
+    const edited = await workflow?.confirmPaste(prepared, config.interaction.warnMultilinePaste);
+    if (edited == null || this.closed || this.readOnly || this.sessionId !== id || this.generation !== generation) return;
+    if (!clipboardFits(edited)) { showError(t("clipboard.tooLarge")); return; }
+    const finalText = preparePaste(edited, config.interaction);
+    if (!finalText) return;
+    this.terminal.paste(finalText);
     this.terminal.focus();
   }
   async restart(): Promise<void> {
@@ -435,10 +484,11 @@ class TerminalTab {
     if (!this.closed && this.button.dataset.state !== "connected") throw new Error(t("tabs.restartFailed", { distribution: this.profile.distribution }));
   }
   async paste(): Promise<void> {
+    if (this.closed || this.readOnly || this.sessionId === null) return;
     if (this.sessionId === null) return;
     const id = this.sessionId;
     const text = await invoke<string>("clipboard_read");
-    if (!this.closed && this.sessionId === id) this.pasteText(text);
+    if (!this.closed && !this.readOnly && this.sessionId === id) await this.pasteText(text);
   }
   dispose(): void {
     this.closed = true;
@@ -458,9 +508,10 @@ function reconcileHistory(): void {
   const lines = historyLines(config.appearance.scrollback, tabs.map(tab => ({ cols: tab.terminal.cols, rows: tab.terminal.rows })));
   for (const tab of tabs) if (tab.terminal.options.scrollback !== lines) tab.terminal.options.scrollback = lines;
 }
-function newTab(distribution?: string, start = true): TerminalTab | undefined {
+function newTab(distribution?: string, start = true, profile?: LaunchProfile, name?: string): TerminalTab | undefined {
   if (!booted || tabs.length >= 32) return;
-  const tab = new TerminalTab(createProfile(config, distribution));
+  const selected = distribution === undefined && !profile ? config.profiles.find(p=>p.id===config.defaultProfileId) : undefined;
+  const tab = new TerminalTab(profile ?? createProfile(config, distribution), name ?? selected?.name);
   tabs.push(tab);
   reconcileHistory();
   if (settingsButton) el("tabs").insertBefore(tab.button, settingsButton);
@@ -533,10 +584,21 @@ async function loadFonts(): Promise<void> {
 }
 const refreshFonts = singleFlight(loadFonts);
 
+// Keep native editing menus in text fields and our terminal/tab menus, but never
+// expose WebView navigation, printing or page saving on the application chrome.
+document.addEventListener("contextmenu", event => {
+  const target = event.target;
+  if (!(target instanceof Element) || !target.closest('input:not([type=checkbox]):not([type=radio]), textarea, [contenteditable=true]')) {
+    event.preventDefault();
+  }
+});
+
 function readDraft(): Config {
   return {
     language: field("language").value,
     monitoringEnabled: field("monitoring").checked,
+    profiles: workflow?.draftProfiles() ?? config.profiles,
+    defaultProfileId: field("default-profile").value || null,
     distribution: field("distribution").value.trim(),
     username: field("username").value.trim() || null,
     directory: field("directory").value.trim(),
@@ -557,11 +619,13 @@ function readDraft(): Config {
       trimPasteNewlines: field("trim-newlines").checked,
       rectangularSelection: field("rectangle").checked,
       warnOnClose: field("warn-close").checked,
+      warnMultilinePaste: field("warn-paste").checked,
     },
     wslSettingsPath: field("wsl-path").value.trim(),
   };
 }
 function loadFields(): void {
+  workflow?.loadFields();
   field("monitoring").checked = config.monitoringEnabled;
   const language = el<HTMLSelectElement>("config-language");
   language.replaceChildren(...languages.map(item => new Option(item.name, item.code)));
@@ -585,13 +649,16 @@ function loadFields(): void {
   field("trim-newlines").checked = config.interaction.trimPasteNewlines;
   field("rectangle").checked = config.interaction.rectangularSelection;
   field("warn-close").checked = config.interaction.warnOnClose;
+  field("warn-paste").checked = config.interaction.warnMultilinePaste;
   field("wsl-path").value = config.wslSettingsPath;
   dirty = false;
   updateDraft();
 }
 function updateDraft(): void {
   const draft = readDraft();
-  dirty = JSON.stringify(draft) !== JSON.stringify(config);
+  for (const id of ['distribution','username','directory']) field(id).disabled = draft.defaultProfileId !== null;
+  refreshSelect('config-distribution');
+  dirty = !sameConfig(draft, config);
   if (dirty) setText(el("save-status"), "settings.unsaved");
   else { el("save-status").removeAttribute("data-i18n"); el("save-status").textContent = ""; }
   el<HTMLButtonElement>("save-settings").disabled = !dirty || savingConfig;
@@ -717,11 +784,13 @@ function updateDistributionChoices(selected: string): void {
   refreshSelect(select.id);
 }
 function renderDistributionMenu(): void {
+  workflow?.renderProfileMenu();
   const focusedDistribution = (document.activeElement as HTMLElement | null)
     ?.dataset.launchDistribution;
   const group = el("distribution-menu");
   group.replaceChildren();
   const entries = [...distributions];
+  const defaultDistribution = createProfile(config).distribution;
   if (!entries.some((entry) => entry.name === config.distribution))
     entries.unshift({
       name: config.distribution,
@@ -745,7 +814,7 @@ function renderDistributionMenu(): void {
     const detail = document.createElement("span");
     detail.className = "distribution-detail";
     detail.textContent =
-      entry.name === config.distribution
+      entry.name === defaultDistribution
         ? t("common.default")
         : entry.version
           ? `WSL ${entry.version}`
@@ -1127,18 +1196,27 @@ el("open-storage").onclick = () =>
 el("open-wsl-config").onclick = () => run(invoke("open_wsl_config"));
 el("wsl-config-help").onclick = () => run(invoke("open_wsl_config_help"));
 initializeThemes();
+workflow = initializeTerminalWorkflow({
+  config:()=>config, tabs:()=>tabs, active:activeTerminal, distributions:()=>distributions,
+  open:(profile,name)=>{newTab(undefined,true,profile,name);},
+  activate, close:tab=>{const current=tabs.find(item=>item.key===tab.key);if(current)closeTab(current);},
+  settings:page=>{openSettings();settingsPage(page);}, search:()=>toggleSearch(),
+  changed:updateDraft, closeMenu, error:showError, native,
+});
 initializeSelects();
 onLanguageChanged(() => {
   closeSelects();
   translateDocument();
   populateFonts(field("font").value || config.appearance.fontFamily);
   renderDistributionMenu();
+  workflow?.refresh();
   updateStorage();
   if (settingsButton) {
     settingsButton.querySelector<HTMLElement>(".tab-title")!.textContent = t("common.settings");
     settingsButton.querySelector(".tab-close")!.setAttribute("aria-label", t("tabs.close", { title: t("common.settings") }));
   }
   for (const tab of tabs) {
+    tab.updateTitle();
     tab.button.querySelector(".tab-close")!.setAttribute("aria-label", t("tabs.close", { title: tab.title.textContent }));
     if (tab.button.dataset.state === "connecting") tab.select.title = t("tabs.connecting");
     else if (tab.button.dataset.state === "error") tab.select.title = t("tabs.connectionFailed");

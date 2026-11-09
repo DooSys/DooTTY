@@ -49,3 +49,13 @@ perte de configuration, installation, réinstallation, désinstallation conserva
 les réglages et suppression facultative du cache/préférences. Il ne lance aucune
 session WSL. Les dialogues, le raccourci bureau et la fermeture d’une session restent à
 vérifier sur un poste Windows interactif.
+
+## Tests de l’interface
+
+Après `npm run build`, lancez `npm run test:ui`. Sous Windows, les essais utilisent
+Microsoft Edge, présent sur les runners GitHub Actions. Sous Linux, installez le
+navigateur de test avec `npx playwright install chromium` avant de lancer les essais.
+Le script utilise le frontend de production et un IPC simulé ; il ne démarre aucune
+distribution WSL et n’écrit pas dans les préférences utilisateur. Il couvre les profils,
+les onglets, le collage, la lecture seule, la palette et la demande d’export.
+Les tests Rust couvrent séparément la persistance et l’écriture du fichier texte.

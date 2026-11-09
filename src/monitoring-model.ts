@@ -1,4 +1,10 @@
 export type Filesystem = { device: string; mount: string; total: number; used: number; available: number };
+/** The WSL kernel-tools image is an internal mount, not user storage. */
+export function storageFilesystems(filesystems: Filesystem[]): Filesystem[] {
+  return filesystems
+    .filter(fs => fs.mount !== '/usr/lib/linux-tools' && !fs.mount.startsWith('/usr/lib/linux-tools/'))
+    .sort((a, b) => Number(b.mount === '/') - Number(a.mount === '/') || a.mount.localeCompare(b.mount));
+}
 export type Snapshot = {
   cpuTotal: number; cpuIdle: number; memoryTotal: number; memoryAvailable: number;
   swapTotal: number; swapFree: number; uptime: number; user: string; hostname: string; kernel: string;

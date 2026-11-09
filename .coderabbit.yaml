@@ -9,6 +9,10 @@ reviews:
   auto_review:
     enabled: true
     drafts: false
+    # Inclut les PR dépendantes ciblant une branche de travail ; main reste inclus.
+    base_branches:
+      - "^fix/.*$"
+      - "^feat/.*$"
     auto_incremental_review: true
   path_instructions:
     - path: "src-tauri/src/**/*.rs"
@@ -23,7 +27,29 @@ reviews:
         Vérifier les opérations asynchrones, courses entre onglets, cycle de vie
         xterm, désabonnements, mémoire bornée et validation des données IPC.
         Préserver la sélection, le presse-papiers et la saisie du terminal.
+        Comparer les préférences par valeur, indépendamment de l'ordre des clés
+        JSON, et vérifier leur réouverture sans perte de profils ni réglages.
+        Garder le curseur et l'écran synchronisés avec ConPTY ; un effacement
+        local ne doit pas les déplacer indépendamment du pseudoterminal.
+        Le collage confirmé doit envoyer uniquement le texte modifié à la même
+        session, sans contourner la lecture seule ni les limites de taille.
+        Le monitoring suit l'onglet actif sans cumuler les timers ou collectes.
         Signaler les régressions et proposer des tests ciblés sur le comportement.
+    - path: "{index.html,src/**/*.css}"
+      instructions: |
+        Vérifier le focus clavier et les menus contextuels utiles, les thèmes
+        clair/sombre, les barres de défilement et la dernière ligne du terminal.
+        Préserver le dimensionnement en fenêtre normale ou agrandie et lors d'un
+        changement de moniteur ou de DPI, sans masquer le prompt ni les contrôles.
+    - path: "src-tauri/src/**/*.sh"
+      instructions: |
+        Les collectes de monitoring restent finies, sans écriture dans Linux ni
+        changement de configuration. Vérifier les compteurs absents, remises à
+        zéro et formats de sortie sans déclencher une distribution arrêtée.
+    - path: "src-tauri/tests/**/*.rs"
+      instructions: |
+        Vérifier la conservation des préférences à travers des processus distincts
+        et l'isolation des données de test des installations réelles de l'utilisateur.
     - path: "src/locales/*.json"
       instructions: |
         Maintenir la parité des clés français/anglais et des interpolations.
