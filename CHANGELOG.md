@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- Bouton Enregistrer actif uniquement lorsque les paramètres ont réellement changé, indépendamment de l’ordre des propriétés renvoyées par Rust.
+
 - Profils de lancement enregistrés et choix du profil d’ouverture.
 - Menu contextuel des onglets : renommage, duplication et fermeture des autres terminaux.
 - Palette de commandes accessible avec Ctrl+Maj+P.

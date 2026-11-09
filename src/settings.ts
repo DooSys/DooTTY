@@ -25,6 +25,16 @@ export type Config = {
   };
   wslSettingsPath: string;
 };
+/** Rust and the form can serialize the same settings in different key orders. */
+export function sameConfig(left: Config, right: Config): boolean {
+  const canonical = (config: Config) => JSON.stringify(config, (_key, value) => {
+    if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+      return Object.fromEntries(Object.keys(value).sort().map(key => [key, value[key]]));
+    }
+    return value;
+  });
+  return canonical(left) === canonical(right);
+}
 export type LaunchProfile = Pick<
   Config,
   "distribution" | "username" | "directory"

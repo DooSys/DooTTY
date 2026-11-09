@@ -6,6 +6,7 @@ import { SearchAddon } from "@xterm/addon-search";
 import { InputQueue } from "./transport";
 import {
   defaults,
+  sameConfig,
   themes,
   terminalTheme,
   formatBytes,
@@ -639,7 +640,7 @@ function updateDraft(): void {
   const draft = readDraft();
   for (const id of ['distribution','username','directory']) field(id).disabled = draft.defaultProfileId !== null;
   refreshSelect('config-distribution');
-  dirty = JSON.stringify(draft) !== JSON.stringify(config);
+  dirty = !sameConfig(draft, config);
   if (dirty) setText(el("save-status"), "settings.unsaved");
   else { el("save-status").removeAttribute("data-i18n"); el("save-status").textContent = ""; }
   el<HTMLButtonElement>("save-settings").disabled = !dirty || savingConfig;

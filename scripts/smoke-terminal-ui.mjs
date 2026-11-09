@@ -48,7 +48,12 @@ try {
           );
         if (command === "save_config") {
           localStorage.setItem("mock-config", JSON.stringify(args.config));
-          return structuredClone(args.config);
+          // Native serde responses need not retain the form's object key order.
+          return JSON.parse(JSON.stringify(args.config, (_key, value) =>
+            value !== null && typeof value === "object" && !Array.isArray(value)
+              ? Object.fromEntries(Object.entries(value).reverse())
+              : value,
+          ));
         }
         if (command === "start_session") {
           const id = ++window.next;
@@ -117,6 +122,12 @@ try {
   await page.goto("http://127.0.0.1:1423");
   await page.locator('.session-tab[data-state="connected"]').waitFor();
   await page.locator("#settings-toggle").click();
+  await page.waitForFunction(() => document.querySelector("#save-settings").disabled);
+  assert(await page.locator("#discard-settings").isDisabled());
+  await page.locator("#config-warn-paste").check();
+  assert(await page.locator("#save-settings").isEnabled());
+  await page.locator("#config-warn-paste").uncheck();
+  assert(await page.locator("#save-settings").isDisabled());
   await page.locator("#profile-add").click();
   await page.locator("#profile-name").fill("Developer");
   await page.locator("#profile-user").fill("developer");
@@ -140,6 +151,13 @@ try {
       JSON.parse(localStorage.getItem("mock-config") ?? "{}").profiles
         ?.length === 1,
   );
+  await page.waitForFunction(() => document.querySelector("#save-settings").disabled);
+  assert(await page.locator("#discard-settings").isDisabled());
+  await page.locator("#config-warn-paste").uncheck();
+  assert(await page.locator("#save-settings").isEnabled());
+  await page.locator("#discard-settings").click();
+  assert(await page.locator("#save-settings").isDisabled());
+  assert(await page.locator("#config-warn-paste").isChecked());
   await page.locator("#new-tab").click();
   await page.waitForFunction(
     () =>
