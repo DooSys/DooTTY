@@ -273,6 +273,12 @@ try {
   await page.keyboard.press("Control+Shift+F");
   await page.locator("#query").fill("READONLY OUTPUT");
   await page.locator("#query").press("Enter");
+  await page.waitForFunction(
+    () =>
+      document.querySelectorAll(
+        ".terminal-pane:not([hidden]) .xterm-selection div",
+      ).length > 0,
+  );
   assert(
     (await page
       .locator(".terminal-pane:not([hidden]) .xterm-selection div")
@@ -286,6 +292,12 @@ try {
     /READONLY OUTPUT/,
   );
   await page.locator("#query").press("Enter");
+  await page.waitForFunction(
+    () =>
+      document.querySelectorAll(
+        ".terminal-pane:not([hidden]) .xterm-selection div",
+      ).length === 0,
+  );
   assert.equal(
     await page
       .locator(".terminal-pane:not([hidden]) .xterm-selection div")
