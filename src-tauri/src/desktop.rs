@@ -9,6 +9,9 @@ mod lifecycle_windows;
 mod platform;
 #[path = "query_windows.rs"]
 mod query_windows;
+#[cfg(test)]
+#[path = "terminal_layout_windows.rs"]
+mod terminal_layout_windows;
 #[path = "updates_windows.rs"]
 mod updates_windows;
 #[path = "window_bounds_windows.rs"]

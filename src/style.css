@@ -18,6 +18,7 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  border-bottom: 1px solid var(--border, #414141);
 }
 button,
 input,
@@ -203,8 +204,11 @@ kbd {
   height: 100%;
 }
 .terminal-pane {
-  padding: 8px 6px 4px 8px;
   background: var(--terminal-background, var(--canvas, #0c0c0c));
+}
+.terminal-pane > .xterm {
+  /* FitAddon subtracts xterm's padding, not its parent's padding. */
+  padding: 8px 6px 4px 8px;
 }
 .xterm {
   height: 100%;
