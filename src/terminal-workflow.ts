@@ -152,6 +152,7 @@ export function initializeTerminalWorkflow(hooks: Hooks) {
   async function exportText(tab: WorkflowTab) {
     if (exportBusy || tab.closed) return;
     exportBusy = true;
+    refresh();
     try {
       let text: string;
       try {
@@ -163,6 +164,7 @@ export function initializeTerminalWorkflow(hooks: Hooks) {
       await invoke("export_terminal_text", { text });
     } finally {
       exportBusy = false;
+      refresh();
     }
   }
   function tabCommands(tab: WorkflowTab | undefined): Command[] {
