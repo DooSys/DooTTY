@@ -59,8 +59,9 @@ confirmée lorsque l’avertissement de fermeture est actif ; l’onglet Paramè
 **Ctrl+Maj+P** ouvre la palette : recherchez une action ou un profil, utilisez les
 flèches et Entrée pour choisir, ou Échap pour revenir au terminal.
 
-**Effacer l’écran et l’historique** conserve la ligne courante sans interrompre les
-commandes. Cette action est indisponible dans l’écran alternatif d’une application plein écran.
+**Effacer l’historique** supprime les lignes sorties de l’écran, en conservant l’écran
+courant et la position du curseur pour rester synchronisé avec ConPTY. Les commandes
+en cours ne sont pas interrompues. Cette action est indisponible dans l’écran alternatif d’une application plein écran.
 **Exporter le texte** enregistre le buffer actif dans un fichier `.txt` UTF-8 choisi avec
 la boîte Windows « Enregistrer sous ». Seul le texte encore conservé est disponible ;
 les lignes simplement repliées sont réunies. Au-delà de 8 Mio, l’export est refusé sans

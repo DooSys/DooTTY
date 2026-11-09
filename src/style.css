@@ -971,9 +971,22 @@ dialog > div {
 #monitoring .hint { font-size: 11px; line-height: 1.6; }
 #monitoring.stale .monitor-metric-heading strong { color: var(--subtle, #8b929d); }
 #monitor-pause { display: flex; align-items: center; justify-content: center; height: 36px; padding: 6px; width: 100%; color: var(--muted, #b0c0ce); margin: 14px 0 0; border: 1px solid var(--border, #363c45); }
-.monitor-filesystem { padding: 9px 0; border-bottom: 1px solid var(--border, #343941); overflow-wrap: anywhere; }
-.monitor-filesystem strong, .monitor-filesystem small { display: block; margin: 4px 0; }
-.monitor-filesystem small { color: var(--muted, #acb5c3); font-size: 11px; line-height: 1.5; }
+#monitor-more { border-top: 1px solid var(--border, #343941); padding-top: 14px; }
+#monitor-more h3 { margin: 0 0 12px; font-size: 12px; font-weight: 600; }
+#monitor-filesystems { display: grid; gap: 10px; }
+.monitor-filesystem { padding: 12px; min-width: 0; border: 1px solid var(--border, #343941); border-radius: 6px; background: var(--surface, #22252a); }
+.monitor-filesystem-heading { display: flex; align-items: flex-start; gap: 7px; }
+.monitor-filesystem-heading svg { width: 17px; height: 17px; flex-shrink: 0; color: var(--accent, #74cbe5); }
+.monitor-filesystem-heading strong { flex: 1; min-width: 0; font-size: 12px; font-weight: 600; overflow-wrap: anywhere; }
+.monitor-filesystem-heading > span { font: 600 11px Consolas, monospace; white-space: nowrap; }
+.monitor-filesystem-device { display: block; margin-top: 5px; color: var(--muted, #acb5c3); font: 10px/1.5 Consolas, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.monitor-filesystem-bar { height: 4px; margin: 12px 0; border-radius: 3px; overflow: hidden; background: var(--border, #343941); }
+.monitor-filesystem-bar span { display: block; height: 100%; border-radius: inherit; background: var(--accent, #74cbe5); }
+.monitor-filesystem-bar[data-load="high"] span { background: var(--warning, #f4c36b); }
+.monitor-filesystem-bar[data-load="critical"] span { background: var(--danger, #ff8383); }
+.monitor-filesystem dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 10px; margin: 0; font-size: 11px; line-height: 1.5; }
+.monitor-filesystem dt { margin: 0; color: var(--muted, #acb5c3); }
+.monitor-filesystem dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .icon-button { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; padding: 7px; flex-shrink: 0; }
 .icon-button svg, .icon-button img { width: 20px; height: 20px; }
 .icon-button svg { fill: none; stroke: currentColor; stroke-width: 1.5; }

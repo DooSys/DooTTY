@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { measure, retainHistory, type Snapshot } from './monitoring-model';
+import { measure, retainHistory, storageFilesystems, type Snapshot } from './monitoring-model';
 const base: Snapshot = {cpuTotal:100,cpuIdle:50,memoryTotal:1000,memoryAvailable:400,swapTotal:0,swapFree:0,uptime:10,user:'alice',hostname:'debian',kernel:'linux',interface:'eth0',received:100,transmitted:200,diskRead:100,diskWritten:300,filesystems:[{mount:'/',device:'/dev/sdc',total:1000,used:200,available:750}]};
 it('calculates deltas and root usage, keeping the first sample unmeasured',()=>{
  expect(measure(base,undefined,1).cpu).toBeNull();
@@ -17,4 +17,14 @@ it('bounds history by both time and sample count',()=>{
  for(let i=0;i<1000;i++) points=retainHistory(points,measure(base,undefined,i*2000));
  expect(points.length).toBeLessThanOrEqual(151);
  expect(points[0].at).toBeGreaterThan(points.at(-1)!.at-300000);
+});
+
+it('shows the root first and excludes only the internal WSL kernel-tools mount', () => {
+ const root = base.filesystems[0];
+ const volume = {...root, mount:'/data', device:'/dev/sde'};
+ const similar = {...root, mount:'/usr/lib/linux-tools-custom'};
+ const mounts = [volume, {...root,mount:'/usr/lib/linux-tools/6.18.54.1-microsoft-standard-WSL2'}, similar, root];
+ expect(storageFilesystems(mounts).map(fs=>fs.mount)).toEqual(['/', '/data', '/usr/lib/linux-tools-custom']);
+ expect(mounts).toHaveLength(4);
+ expect(storageFilesystems([{...root,mount:'/usr/lib/linux-tools'}])).toEqual([]);
 });

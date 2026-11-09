@@ -275,13 +275,18 @@ class TerminalTab {
   }
   clearHistory(): void {
     if (this.closed || this.terminal.buffer.active.type !== "normal") return;
-    // Clearing xterm does not invalidate SearchAddon's retained line cache.
-    this.search.dispose();
-    this.terminal.clearSelection();
-    this.terminal.clear();
-    this.search = new SearchAddon();
-    this.terminal.loadAddon(this.search);
-    this.terminal.focus();
+    // ConPTY keeps its own screen and cursor. Terminal.clear() relocates xterm's
+    // cursor without informing ConPTY, corrupting its subsequent delta redraws.
+    // ED 3 removes scrollback only and is parsed in order with session output.
+    this.terminal.write("\x1b[3J", () => {
+      if (this.closed) return;
+      // Clearing history does not invalidate SearchAddon's retained line cache.
+      this.search.dispose();
+      this.terminal.clearSelection();
+      this.search = new SearchAddon();
+      this.terminal.loadAddon(this.search);
+      if (activeKey === this.key) this.terminal.focus();
+    });
   }
   rename(name: string): void { this.customTitle = name.slice(0,80) || null; this.updateTitle(); }
   setReadOnly(value: boolean): void {
@@ -578,6 +583,15 @@ async function loadFonts(): Promise<void> {
   }
 }
 const refreshFonts = singleFlight(loadFonts);
+
+// Keep native editing menus in text fields and our terminal/tab menus, but never
+// expose WebView navigation, printing or page saving on the application chrome.
+document.addEventListener("contextmenu", event => {
+  const target = event.target;
+  if (!(target instanceof Element) || !target.closest('input:not([type=checkbox]):not([type=radio]), textarea, [contenteditable=true]')) {
+    event.preventDefault();
+  }
+});
 
 function readDraft(): Config {
   return {

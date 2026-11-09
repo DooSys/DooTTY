@@ -2,7 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { distributionIcon } from './distribution-icons';
 import { formatBytes } from './settings';
 import { currentLanguage, onLanguageChanged, t } from './i18n';
-import { HISTORY_MS, measure, retainHistory, type Measurement, type Snapshot } from './monitoring-model';
+import { HISTORY_MS, measure, retainHistory, storageFilesystems, type Measurement, type Snapshot } from './monitoring-model';
 
 type Target = { sessionId: number; distribution: string; username: string | null };
 type History = { snapshot?: Snapshot; points: Measurement[] };
@@ -32,6 +32,7 @@ export function initializeMonitoring(options: { native: boolean; target: () => T
   const status = document.getElementById('monitor-state')!;
   const identity = document.getElementById('monitor-identity')!;
   const filesystems = document.getElementById('monitor-filesystems')!;
+  const storage = document.getElementById('monitor-more')!;
   let expanded = false, paused = false, loading = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let lastTarget: Target | null = null;
@@ -94,12 +95,43 @@ export function initializeMonitoring(options: { native: boolean; target: () => T
       if(expanded) graph(row.svg,history?.points??[],row.name==='network'?['receive','transmit']:row.name==='disk'?['read','write']:[row.name==='space'?'space':row.name==='memory'?'memory':'cpu'],['cpu','memory','space'].includes(row.name)?100:undefined);
     }
     filesystems.replaceChildren();
-    if(expanded && snapshot) for(const fs of snapshot.filesystems) {
-      const entry=document.createElement('div'); entry.className='monitor-filesystem';
-      const name=document.createElement('strong'); name.textContent=fs.mount;
-      const device=document.createElement('small'); device.textContent=fs.device;
-      const space=document.createElement('small'); space.textContent=`${t('monitor.free')}: ${formatBytes(fs.available)} · ${t('monitor.total')}: ${formatBytes(fs.total)}`;
-      entry.append(name,device,space); filesystems.append(entry);
+    const volumes = storageFilesystems(snapshot?.filesystems ?? []);
+    storage.hidden = volumes.length === 0;
+    if (expanded) for (const fs of volumes) {
+      const entry = document.createElement('div');
+      entry.className = 'monitor-filesystem';
+      const heading = document.createElement('div');
+      heading.className = 'monitor-filesystem-heading';
+      const name = document.createElement('strong');
+      name.textContent = fs.mount === '/' ? t('monitor.rootVolume') : fs.mount;
+      const usage = fs.total > 0 ? Math.max(0, Math.min(100, fs.used / fs.total * 100)) : null;
+      const value = document.createElement('span');
+      value.textContent = percent(usage);
+      heading.append(icon(paths.space), name, value);
+      const device = document.createElement('small');
+      device.className = 'monitor-filesystem-device';
+      device.textContent = fs.mount === '/' ? `/ · ${fs.device}` : fs.device;
+      device.title = `${fs.mount} · ${fs.device}`;
+      const bar = document.createElement('div');
+      bar.className = 'monitor-filesystem-bar';
+      bar.setAttribute('role', 'meter');
+      bar.setAttribute('aria-label', `${t('monitor.used')} · ${fs.mount}`);
+      bar.setAttribute('aria-valuemin', '0');
+      bar.setAttribute('aria-valuemax', '100');
+      if (usage !== null) bar.setAttribute('aria-valuenow', String(Math.round(usage)));
+      else bar.setAttribute('aria-valuetext', '—');
+      bar.dataset.load = usage !== null && usage >= 90 ? 'critical' : usage !== null && usage >= 75 ? 'high' : 'normal';
+      const fill = document.createElement('span');
+      fill.style.width = `${usage ?? 0}%`;
+      bar.append(fill);
+      const sizes = document.createElement('dl');
+      for (const [label, bytes] of [[t('monitor.free'), fs.available], [t('monitor.total'), fs.total]] as const) {
+        const term = document.createElement('dt'); term.textContent = label;
+        const amount = document.createElement('dd'); amount.textContent = formatBytes(bytes);
+        sizes.append(term, amount);
+      }
+      entry.append(heading, device, bar, sizes);
+      filesystems.append(entry);
     }
   }
   async function sample(): Promise<void> {

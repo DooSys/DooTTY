@@ -44,7 +44,7 @@ try {
         if (command === "session_config")
           return JSON.parse(
             localStorage.getItem("mock-config") ??
-              JSON.stringify({ ...defaults, monitoringEnabled: false }),
+              JSON.stringify(defaults),
           );
         if (command === "save_config") {
           localStorage.setItem("mock-config", JSON.stringify(args.config));
@@ -68,6 +68,16 @@ try {
           });
           return id;
         }
+        if (command === "monitoring_snapshot") return {
+          cpuTotal:1000,cpuIdle:500,memoryTotal:8*1024**3,memoryAvailable:5*1024**3,
+          swapTotal:0,swapFree:0,uptime:100,user:"developer",hostname:"linux-host",kernel:"6.18.54.1-microsoft-standard-WSL2",
+          interface:"eth0",received:0,transmitted:0,diskRead:0,diskWritten:0,
+          filesystems:[
+            {device:"/dev/sdb",mount:"/usr/lib/linux-tools/6.18.54.1-microsoft-standard-WSL2",total:100*1024**2,used:100*1024**2,available:0},
+            {device:"/dev/sde",mount:"/data",total:100*1024**3,used:90*1024**3,available:10*1024**3},
+            {device:"/dev/sdd",mount:"/",total:1024**4,used:100*1024**3,available:900*1024**3},
+          ],
+        };
         if (command === "clipboard_read") return window.clipboardText;
         if (command === "clipboard_write") {
           window.clipboardText = args.text;
@@ -121,7 +131,28 @@ try {
   }, defaults);
   await page.goto("http://127.0.0.1:1423");
   await page.locator('.session-tab[data-state="connected"]').waitFor();
+  await page.locator("#monitor-toggle").click();
+  await page.waitForFunction(() => document.querySelectorAll(".monitor-filesystem").length === 2);
+  assert.equal(await page.locator(".monitor-filesystem-heading strong").first().innerText(), "Racine Linux");
+  assert.equal(await page.locator("#monitor-filesystems").innerText().then(text => text.includes("linux-tools")), false);
+  assert.equal(await page.locator(".monitor-filesystem dl dd").count(), 4);
+  assert(await page.locator(".monitor-filesystem").first().evaluate(card =>
+    Math.abs(card.querySelector("dt").getBoundingClientRect().top - card.querySelector("dd").getBoundingClientRect().top) < 1,
+  ));
+  assert.equal(await page.locator(".monitor-filesystem-bar").last().getAttribute("data-load"), "critical");
+  assert.equal(await page.locator("#monitor-identity").innerText().then(text => text.match(/6\.18\.54\.1/g)?.length), 1);
+  const contextPrevented = selector => page.locator(selector).evaluate(element => {
+    const event = new MouseEvent("contextmenu", {bubbles:true,cancelable:true});
+    element.dispatchEvent(event);
+    return event.defaultPrevented;
+  });
+  assert(await contextPrevented(".app-brand"));
+  assert(await contextPrevented("#monitoring"));
   await page.locator("#settings-toggle").click();
+  assert(await contextPrevented(".settings-tab .tab-select"));
+  assert(await contextPrevented("#settings-nav"));
+  assert.equal(await contextPrevented("#config-directory"), false);
+  assert(await contextPrevented("#config-warn-paste"));
   await page.waitForFunction(() => document.querySelector("#save-settings").disabled);
   assert(await page.locator("#discard-settings").isDisabled());
   await page.locator("#config-warn-paste").check();
@@ -300,6 +331,9 @@ try {
     ),
     /READONLY OUTPUT/,
   );
+  await page.evaluate(() => window.sessions[3].onmessage({kind:"data",bytes:Array.from(new TextEncoder().encode(
+    "\r\n" + "completed output\r\n".repeat(100) + "\x1b[20;1Hdeveloper@linux-host:~$ ",
+  ))}));
   await page.keyboard.press("Control+Shift+F");
   await page.locator("#query").fill("READONLY OUTPUT");
   await page.locator("#query").press("Enter");
@@ -321,6 +355,11 @@ try {
     await page.locator(".terminal-pane:not([hidden]) .xterm-rows").innerText(),
     /READONLY OUTPUT/,
   );
+  // ConPTY continues to draw at row 20 after the UI action: preserve that row.
+  await page.evaluate(() => window.sessions[3].onmessage({kind:"data",bytes:Array.from(new TextEncoder().encode(
+    "\x1b[20;25Hstill-connected",
+  ))}));
+  await page.waitForFunction(() => document.querySelector(".terminal-pane:not([hidden]) .xterm-rows")?.innerText.includes("developer@linux-host:~$ still-connected"));
   await page.locator("#query").press("Enter");
   await page.waitForFunction(
     () =>
@@ -391,7 +430,7 @@ try {
   );
   assert.deepEqual(errors, []);
   console.log(
-    "PASS: profile CRUD/default/persistence, modal combo, tab rename/duplicate, read-only input/paste blocking and live output/copy, editable full paste preview/cancel/confirm, settings save state, palette, export, clear and close-others confirmation.",
+    "PASS: profile CRUD/default/persistence, modal combo, tab rename/duplicate, read-only input/paste blocking and live output/copy, editable full paste preview/cancel/confirm, settings save state, chrome context menus, storage cards, ConPTY cursor after clearing history, palette, export, clear and close-others confirmation.",
   );
 } finally {
   await browser?.close();

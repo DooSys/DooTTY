@@ -2,12 +2,15 @@
 
 ## Non publié
 
+- Menu navigateur supprimé du clic droit sur l’interface, en conservant les menus utiles des terminaux, onglets et champs de texte.
+- Volumes Linux présentés en cartes avec jauge d’occupation, espace libre et capacité ; montage interne des outils du noyau masqué.
+
 - Bouton Enregistrer actif uniquement lorsque les paramètres ont réellement changé, indépendamment de l’ordre des propriétés renvoyées par Rust.
 
 - Profils de lancement enregistrés et choix du profil d’ouverture.
 - Menu contextuel des onglets : renommage, duplication et fermeture des autres terminaux.
 - Palette de commandes accessible avec Ctrl+Maj+P.
-- Effacement de l’écran/historique et export du buffer actif en texte UTF-8.
+- Effacement de l’historique sans déplacer le curseur ConPTY, et export du buffer actif en texte UTF-8.
 - Confirmation facultative du collage multiligne avec texte modifiable avant envoi.
 - Lecture seule par onglet, sans interrompre la réception des sorties.
 - Tests de l’interface de production ajoutés aux workflows Windows et de release.
