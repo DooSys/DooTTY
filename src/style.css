@@ -1,5 +1,8 @@
 @import "@xterm/xterm/css/xterm.css";
 :root {
+  --scrollbar-thumb: #737c88;
+  --scrollbar-hover: #a0aab6;
+  --scrollbar-active: #bdc6d0;
   font-family: "Segoe UI", sans-serif;
   color: var(--text, #ededed);
   background: var(--canvas, #0c0c0c);
@@ -212,6 +215,46 @@ kbd {
 }
 .xterm {
   height: 100%;
+}
+/* xterm 6 scrolls through its scrollable element. The legacy viewport is
+   retained for layout/overview rendering and must not paint a second scrollbar. */
+.terminal-pane .xterm-viewport {
+  overflow: hidden;
+}
+/* Same 14px track and 6px rounded thumb on monitoring and terminal history. */
+#monitoring {
+  scrollbar-width: auto;
+  scrollbar-color: auto;
+}
+#monitoring::-webkit-scrollbar {
+  width: 14px;
+  height: 14px;
+}
+#monitoring::-webkit-scrollbar-track {
+  background: transparent;
+}
+#monitoring::-webkit-scrollbar-thumb,
+.terminal-pane .xterm .xterm-scrollable-element > .scrollbar.vertical > .slider {
+  background-color: var(--scrollbar-thumb);
+  background-clip: padding-box;
+  border: 4px solid transparent;
+  border-radius: 8px;
+}
+#monitoring::-webkit-scrollbar-thumb {
+  min-height: 32px;
+}
+#monitoring::-webkit-scrollbar-thumb:hover,
+.terminal-pane .xterm .xterm-scrollable-element > .scrollbar.vertical > .slider:hover {
+  background-color: var(--scrollbar-hover);
+}
+#monitoring::-webkit-scrollbar-thumb:active,
+.terminal-pane .xterm .xterm-scrollable-element > .scrollbar.vertical > .slider.active {
+  background-color: var(--scrollbar-active);
+}
+#monitoring::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
 }
 #notice {
   display: flex;
@@ -901,7 +944,7 @@ dialog > div {
 #workspace { display: flex; }
 #terminal-panes { flex: 1; }
 #settings, #empty-state { width: 100%; }
-#monitoring { flex: 0 0 56px; width: 56px; overflow-y: auto; overflow-x: hidden; background: var(--panel, #1c1e22); border-right: 1px solid var(--border, #35383d); padding: 8px 4px; scrollbar-width: thin; }
+#monitoring { flex: 0 0 56px; width: 56px; overflow-y: auto; overflow-x: hidden; background: var(--panel, #1c1e22); border-right: 1px solid var(--border, #35383d); padding: 8px 4px; }
 #monitoring.expanded { flex-basis: 292px; width: 292px; padding: 14px; }
 .monitor-top { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
 #monitoring.expanded .monitor-top { flex-direction: row; justify-content: flex-start; gap: 9px; }
@@ -966,6 +1009,9 @@ dialog > div {
 
 /* App chrome and terminal use the same soft gray/blue direction in light mode. */
 :root[data-theme="light"] {
+  --scrollbar-thumb: #8d9bab;
+  --scrollbar-hover: #64778c;
+  --scrollbar-active: #465d77;
   color-scheme: light;
   --canvas: #eef2f6;
   --panel: #e4ebf2;

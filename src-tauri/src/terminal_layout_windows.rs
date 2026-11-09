@@ -82,7 +82,7 @@ fn terminal_last_row_remains_visible_on_each_monitor() {
         const style = document.createElement('style');
         style.textContent = {};
         document.head.append(style);
-        document.body.innerHTML = '<header></header><main id="workspace"><div id="terminal-panes"><div class="terminal-pane"></div></div></main>';
+        document.body.innerHTML = '<header></header><main id="workspace"><aside id="monitoring" class="expanded"><div style="height:2000px"></div></aside><div id="terminal-panes"><div class="terminal-pane"></div></div></main>';
         const terminal = new Terminal({{fontFamily:'Consolas, monospace',fontSize:14,scrollback:500}});
         const fit = new FitAddon.FitAddon(); terminal.loadAddon(fit);
         terminal.open(document.querySelector('.terminal-pane'));
@@ -91,12 +91,24 @@ fn terminal_last_row_remains_visible_on_each_monitor() {
             fit.fit();
             terminal.write('test prompt\r\n'.repeat(200), () => requestAnimationFrame(() => {{
                 const pane = document.querySelector('.terminal-pane');
+                const scrollbar = pane.querySelector('.scrollbar.vertical');
+                const slider = scrollbar.querySelector('.slider');
+                const monitoring = document.querySelector('#monitoring');
                 document.title = JSON.stringify({{
                     sequence: ++sequence, height: innerHeight, dpr: devicePixelRatio, rows: terminal.rows, rowHeight: pane.querySelector('.xterm-rows').lastElementChild.getBoundingClientRect().height,
                     paneBottom: pane.getBoundingClientRect().bottom,
                     viewportBottom: pane.querySelector('.xterm-viewport').getBoundingClientRect().bottom,
                     lastRowBottom: pane.querySelector('.xterm-rows').lastElementChild.getBoundingClientRect().bottom,
-                    separator: parseFloat(getComputedStyle(document.body).borderBottomWidth)
+                    separator: parseFloat(getComputedStyle(document.body).borderBottomWidth),
+                    legacyOverflow: getComputedStyle(pane.querySelector('.xterm-viewport')).overflowY,
+                    scrollbarTop: scrollbar.getBoundingClientRect().top,
+                    scrollbarBottom: scrollbar.getBoundingClientRect().bottom,
+                    scrollbarWidth: getComputedStyle(scrollbar).width,
+                    monitoringWidth: getComputedStyle(monitoring, '::-webkit-scrollbar').width,
+                    thumbColor: getComputedStyle(slider).backgroundColor,
+                    monitoringColor: getComputedStyle(monitoring, '::-webkit-scrollbar-thumb').backgroundColor,
+                    thumbRadius: getComputedStyle(slider).borderRadius,
+                    monitoringRadius: getComputedStyle(monitoring, '::-webkit-scrollbar-thumb').borderRadius
                 }});
             }}));
         }};
@@ -195,5 +207,16 @@ fn terminal_last_row_remains_visible_on_each_monitor() {
             value("separator") > 0.0 && value("separator") <= 1.0,
             "Bottom separator missing: {result}"
         );
+        assert_eq!(
+            result["legacyOverflow"], "hidden",
+            "A second native scrollbar is visible"
+        );
+        assert!(
+            value("scrollbarTop") >= 0.0 && value("scrollbarBottom") <= value("paneBottom") + 0.5,
+            "Scrollbar is clipped: {result}"
+        );
+        assert_eq!(result["scrollbarWidth"], result["monitoringWidth"]);
+        assert_eq!(result["thumbColor"], result["monitoringColor"]);
+        assert_eq!(result["thumbRadius"], result["monitoringRadius"]);
     }
 }
