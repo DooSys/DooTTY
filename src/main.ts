@@ -459,9 +459,13 @@ class TerminalTab {
     if (!clipboardFits(text)) { showError(t("clipboard.tooLarge")); return; }
     const prepared = preparePaste(text, config.interaction);
     const id = this.sessionId, generation = this.generation;
-    if (!prepared || !await workflow?.confirmPaste(prepared, config.interaction.warnMultilinePaste)) return;
-    if (this.closed || this.readOnly || this.sessionId !== id || this.generation !== generation) return;
-    this.terminal.paste(prepared);
+    if (!prepared) return;
+    const edited = await workflow?.confirmPaste(prepared, config.interaction.warnMultilinePaste);
+    if (edited == null || this.closed || this.readOnly || this.sessionId !== id || this.generation !== generation) return;
+    if (!clipboardFits(edited)) { showError(t("clipboard.tooLarge")); return; }
+    const finalText = preparePaste(edited, config.interaction);
+    if (!finalText) return;
+    this.terminal.paste(finalText);
     this.terminal.focus();
   }
   async restart(): Promise<void> {

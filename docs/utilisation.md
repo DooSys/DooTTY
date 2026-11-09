@@ -67,9 +67,11 @@ les lignes simplement repliées sont réunies. Au-delà de 8 Mio, l’export est
 troncature. Le fichier est remplacé après écriture complète, avec confirmation Windows
 si le nom existe déjà.
 
-**Général → Confirmer le collage multiligne**, désactivé initialement, affiche un aperçu
+**Général → Confirmer le collage multiligne**, désactivé initialement, ouvre un éditeur
 lorsque le texte préparé contient un retour à la ligne, y compris à la fin. Annuler
-n’envoie rien ; une confirmation n’est plus valable si sa session a été fermée ou remplacée.
+n’envoie rien ; **Coller** envoie le texte modifié. Entrée ajoute une ligne dans l’éditeur
+sans valider l’envoi. Le texte complet est affiché, dans la limite de 4 Mio du collage.
+Une confirmation n’est plus valable si sa session a été fermée ou remplacée.
 
 La **lecture seule**, activée par onglet via son menu ou la palette, bloque la saisie
 et les collages. Le flux de sortie, la sélection, la copie et l’export restent utilisables.

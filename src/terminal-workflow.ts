@@ -119,15 +119,16 @@ export function initializeTerminalWorkflow(hooks: Hooks) {
   async function confirmPaste(
     text: string,
     enabled: boolean,
-  ): Promise<boolean> {
-    if (!enabled || !multilinePaste(text)) return true;
+  ): Promise<string | null> {
+    if (!enabled || !multilinePaste(text)) return text;
     if (confirmationPending || document.querySelector("dialog[open]"))
-      return false;
-    const preview = el("paste-preview");
-    preview.textContent = text.slice(0, 4096);
+      return null;
+    const editor = el<HTMLTextAreaElement>("paste-preview");
+    editor.value = text;
     const accepted = await showDialog("paste-dialog");
-    preview.textContent = "";
-    return accepted;
+    const edited = accepted ? editor.value : null;
+    editor.value = "";
+    return edited;
   }
   async function rename(tab: WorkflowTab) {
     if (document.querySelector("dialog[open]")) return;

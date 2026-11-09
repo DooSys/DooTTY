@@ -367,9 +367,10 @@
     "commandSearch": "Rechercher une action ou un profil…",
     "noCommands": "Aucune action disponible pour cette recherche.",
     "warnPaste": "Confirmer le collage multiligne",
-    "warnPasteHint": "Affiche un aperçu avant de coller du texte contenant un retour à la ligne.",
+    "warnPasteHint": "Permet de modifier le texte contenant un retour à la ligne avant de le coller.",
+    "pasteText": "Texte à coller",
     "pasteTitle": "Coller plusieurs lignes ?",
-    "pasteHint": "Les retours à la ligne peuvent lancer des commandes. Aperçu limité aux 4 096 premiers caractères.",
+    "pasteHint": "Modifiez le texte avant de le coller. Les retours à la ligne peuvent lancer des commandes.",
     "cancel": "Annuler",
     "apply": "Appliquer",
     "defaultProfileHint": "Utilisé au démarrage et avec +. La session personnalisée utilise les réglages ci-dessus."

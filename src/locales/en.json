@@ -367,9 +367,10 @@
     "commandSearch": "Search for an action or profile…",
     "noCommands": "No available actions match this search.",
     "warnPaste": "Confirm multiline pastes",
-    "warnPasteHint": "Preview pasted text containing a line break before sending it.",
+    "warnPasteHint": "Edit text containing a line break before pasting it.",
+    "pasteText": "Text to paste",
     "pasteTitle": "Paste multiple lines?",
-    "pasteHint": "Line breaks may execute commands. Preview limited to the first 4,096 characters.",
+    "pasteHint": "Edit the text before pasting it. Line breaks may execute commands.",
     "cancel": "Cancel",
     "apply": "Apply",
     "defaultProfileHint": "Used at startup and with +. The custom session uses the settings above."

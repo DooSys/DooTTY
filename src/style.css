@@ -25,6 +25,7 @@ body {
 }
 button,
 input,
+textarea,
 select {
   font: inherit;
 }
@@ -41,6 +42,7 @@ button:hover {
 }
 button:focus-visible,
 input:focus-visible,
+textarea:focus-visible,
 select:focus-visible,
 summary:focus-visible {
   outline: 2px solid var(--accent, #60cdff);
@@ -51,6 +53,7 @@ button:disabled {
   cursor: default;
 }
 input,
+textarea,
 select {
   background: var(--field, #3a3a3a);
   color: var(--text, #f5f5f5);
@@ -1076,3 +1079,16 @@ dialog > div {
 #saved-profile-menu:not(:empty) { border-bottom: 1px solid var(--border, #414141); margin-bottom: 5px; padding-bottom: 5px; }
 .workflow-dialog > .select-popup, #command-results { display: block; }
 .session-tab.read-only .tab-title::before { content: ''; display: inline-block; width: 12px; height: 12px; margin-right: 5px; background-color: var(--accent, #60cdff); mask: url('/assets/icons/lock.svg') center / contain no-repeat; }
+
+#paste-dialog { width: min(760px, calc(100vw - 32px)); max-width: 760px; }
+#paste-preview {
+  display: block;
+  width: 100%;
+  min-height: 160px;
+  max-height: 45vh;
+  resize: vertical;
+  font-family: "Cascadia Mono", Consolas, monospace;
+  line-height: 1.5;
+  tab-size: 4;
+  user-select: text;
+}

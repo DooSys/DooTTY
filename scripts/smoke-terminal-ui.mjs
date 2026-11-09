@@ -243,13 +243,13 @@ try {
   await page.keyboard.type("ok");
   await page.waitForTimeout(50);
   assert((await writes()) > before);
-  await page.evaluate(() => (window.clipboardText = "<tag>\nsecond"));
+  await page.evaluate(() => (window.clipboardText = "<tag>\n" + "x".repeat(5000) + "second"));
   before = await writes();
   await page.keyboard.press("Control+Shift+V");
   await page.locator("#paste-dialog").waitFor({ state: "visible" });
   assert.equal(
-    await page.locator("#paste-preview").innerText(),
-    "<tag>\nsecond",
+    await page.locator("#paste-preview").inputValue(),
+    "<tag>\n" + "x".repeat(5000) + "second",
   );
   assert.equal(await writes(), before);
   const pasteCancelled = page
@@ -260,10 +260,17 @@ try {
           dialog.addEventListener("close", () => resolve(true), { once: true }),
         ),
     );
+  await page.locator("#paste-preview").fill("cancelled edit\n");
   await page.locator("#paste-dialog button[value=cancel]").click();
   await pasteCancelled;
   assert.equal(await writes(), before);
   await page.keyboard.press("Control+Shift+V");
+  assert.equal(await page.locator("#paste-preview").inputValue(), "<tag>\n" + "x".repeat(5000) + "second");
+  await page.locator("#paste-preview").fill("echo changed-parameter");
+  await page.locator("#paste-preview").press("End");
+  await page.locator("#paste-preview").press("Enter");
+  assert(await page.locator("#paste-dialog").isVisible());
+  assert.equal(await writes(), before);
   await page.locator("#paste-dialog button[value=accept]").click();
   await page.waitForFunction(
     (count) =>
@@ -271,6 +278,11 @@ try {
     before,
   );
   assert((await writes()) > before);
+  const sentPaste = await page.evaluate((count) => new TextDecoder().decode(new Uint8Array(
+    window.calls.filter(c => c.command === "write_session").slice(count).flatMap(c => c.args.bytes),
+  )), before);
+  assert.equal(sentPaste, "\x1b[200~echo changed-parameter\r\x1b[201~");
+  assert.equal(await page.locator("#paste-preview").inputValue(), "");
   const palette = async (text) => {
     await page.keyboard.press("Control+Shift+P");
     await page.locator("#command-query").fill(text);
@@ -379,7 +391,7 @@ try {
   );
   assert.deepEqual(errors, []);
   console.log(
-    "PASS: profile CRUD/default/persistence, modal combo, tab rename/duplicate, read-only input/paste blocking and live output/copy, paste preview/cancel/confirm, palette, export, clear and close-others confirmation.",
+    "PASS: profile CRUD/default/persistence, modal combo, tab rename/duplicate, read-only input/paste blocking and live output/copy, editable full paste preview/cancel/confirm, settings save state, palette, export, clear and close-others confirmation.",
   );
 } finally {
   await browser?.close();

@@ -8,7 +8,7 @@
 - Menu contextuel des onglets : renommage, duplication et fermeture des autres terminaux.
 - Palette de commandes accessible avec Ctrl+Maj+P.
 - Effacement de l’écran/historique et export du buffer actif en texte UTF-8.
-- Confirmation facultative du collage multiligne avec aperçu.
+- Confirmation facultative du collage multiligne avec texte modifiable avant envoi.
 - Lecture seule par onglet, sans interrompre la réception des sorties.
 - Tests de l’interface de production ajoutés aux workflows Windows et de release.
 
