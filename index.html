@@ -911,7 +911,7 @@
   <nav id="tab-context-menu" class="workflow-popup" role="menu" hidden></nav>
   <dialog id="command-palette" class="workflow-dialog" data-i18n-aria-label="workflow.palette">
    <div class="palette-heading"><strong data-i18n="workflow.palette"></strong><button id="command-close" type="button" data-i18n-aria-label="workflow.cancel">✕</button></div>
-   <input id="command-query" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="command-results" data-i18n-aria-label="workflow.commandSearch" data-i18n-placeholder="workflow.commandSearch" autocomplete="off"/>
+   <input id="command-query" maxlength="256" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="command-results" data-i18n-aria-label="workflow.commandSearch" data-i18n-placeholder="workflow.commandSearch" autocomplete="off"/>
    <div id="command-results" role="listbox" data-i18n-aria-label="workflow.palette"></div><p id="command-empty" data-i18n="workflow.noCommands" hidden></p>
   </dialog>
   <dialog id="rename-dialog" class="workflow-dialog" aria-labelledby="rename-title"><form method="dialog">
