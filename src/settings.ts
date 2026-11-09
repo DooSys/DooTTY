@@ -15,11 +15,13 @@ export type Config = {
   distribution: string;
   username: string | null;
   directory: string;
+  profiles: SavedProfile[];
+  defaultProfileId: string | null;
   appearance: Appearance;
   interaction: {
     copyOnSelect: boolean; rightClickPaste: boolean;
     trimCopyWhitespace: boolean; trimPasteWhitespace: boolean; trimPasteNewlines: boolean;
-    rectangularSelection: boolean; warnOnClose: boolean;
+    rectangularSelection: boolean; warnOnClose: boolean; warnMultilinePaste: boolean;
   };
   wslSettingsPath: string;
 };
@@ -27,10 +29,16 @@ export type LaunchProfile = Pick<
   Config,
   "distribution" | "username" | "directory"
 >;
+export type SavedProfile = LaunchProfile & { id: string; name: string };
 export function createProfile(
   config: Config,
-  distribution = config.distribution,
+  distribution?: string,
 ): LaunchProfile {
+  if (distribution === undefined) {
+    const saved = config.profiles.find(p => p.id === config.defaultProfileId);
+    if (saved) return { distribution: saved.distribution, username: saved.username, directory: saved.directory };
+    distribution = config.distribution;
+  }
   return distribution === config.distribution
     ? { distribution, username: config.username, directory: config.directory }
     : { distribution, username: null, directory: "~" };
@@ -49,6 +57,8 @@ export const defaults: Config = {
   distribution: "Debian",
   username: null,
   directory: "~",
+  profiles: [],
+  defaultProfileId: null,
   appearance: {
     uiTheme: "dark",    fontFamily: "Cascadia Mono, Consolas, monospace",
     fontSize: 14,
@@ -60,7 +70,7 @@ export const defaults: Config = {
   interaction: {
     copyOnSelect: false, rightClickPaste: false,
     trimCopyWhitespace: false, trimPasteWhitespace: false, trimPasteNewlines: false,
-    rectangularSelection: false, warnOnClose: true,
+    rectangularSelection: false, warnOnClose: true, warnMultilinePaste: false,
   },
   wslSettingsPath: "C:\\Program Files\\WSL\\wslsettings\\wslsettings.exe",
 };

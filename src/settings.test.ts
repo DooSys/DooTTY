@@ -61,3 +61,13 @@ it("keeps every console palette independent of the app theme", () => {
   }
   expect(terminalTheme({ theme: "unknown" })).toBe(themes.campbell);
 });
+
+it("launches a saved default profile without leaking its metadata into WSL arguments", () => {
+  const config = structuredClone(defaults);
+  config.profiles=[{id:"work",name:"Work",distribution:"Ubuntu",username:"developer",directory:"/home/developer/project one"}];
+  config.defaultProfileId="work";
+  expect(createProfile(config)).toEqual({distribution:"Ubuntu",username:"developer",directory:"/home/developer/project one"});
+  expect(createProfile(config,"Debian")).toEqual({distribution:"Debian",username:null,directory:"~"});
+  config.defaultProfileId=null;
+  expect(createProfile(config).distribution).toBe("Debian");
+});

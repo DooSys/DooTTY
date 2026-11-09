@@ -41,6 +41,41 @@ Les onglets ouverts, leur sortie, la pause du monitoring et son historique ne so
 pas enregistrés. Le profil WebView2 est géré séparément dans le dossier local de
 l'application Windows ; les préférences DooTTY ne dépendent pas du cache de la WebView.
 
+## Profils et actions du terminal
+
+Dans **Général → Profils enregistrés**, ajoutez ou modifiez un nom, une distribution,
+un utilisateur Linux facultatif et un répertoire de départ. Validez le dialogue,
+puis **Enregistrer** pour conserver les changements. Le profil d’ouverture est utilisé
+au lancement et avec **+** ; « Session personnalisée » utilise les champs précédents.
+Les profils sont aussi proposés dans le menu de la flèche et la palette de commandes.
+Supprimer un profil n’efface pas sa distribution ni les onglets déjà ouverts.
+
+Le clic droit sur un onglet propose **Renommer**, **Dupliquer** et **Fermer les autres
+onglets**. La duplication crée une nouvelle session avec le même profil de départ ;
+elle ne reprend ni les processus ni les changements de dossier effectués dans le shell.
+Un nom vide réactive le titre automatique. La fermeture des autres terminaux est
+confirmée lorsque l’avertissement de fermeture est actif ; l’onglet Paramètres reste ouvert.
+
+**Ctrl+Maj+P** ouvre la palette : recherchez une action ou un profil, utilisez les
+flèches et Entrée pour choisir, ou Échap pour revenir au terminal.
+
+**Effacer l’écran et l’historique** conserve la ligne courante sans interrompre les
+commandes. Cette action est indisponible dans l’écran alternatif d’une application plein écran.
+**Exporter le texte** enregistre le buffer actif dans un fichier `.txt` UTF-8 choisi avec
+la boîte Windows « Enregistrer sous ». Seul le texte encore conservé est disponible ;
+les lignes simplement repliées sont réunies. Au-delà de 8 Mio, l’export est refusé sans
+troncature. Le fichier est remplacé après écriture complète, avec confirmation Windows
+si le nom existe déjà.
+
+**Général → Confirmer le collage multiligne**, désactivé initialement, affiche un aperçu
+lorsque le texte préparé contient un retour à la ligne, y compris à la fin. Annuler
+n’envoie rien ; une confirmation n’est plus valable si sa session a été fermée ou remplacée.
+
+La **lecture seule**, activée par onglet via son menu ou la palette, bloque la saisie
+et les collages. Le flux de sortie, la sélection, la copie et l’export restent utilisables.
+Le cadenas identifie l’onglet protégé. Ce mode ne modifie pas les droits des fichiers Linux.
+Les noms personnalisés des onglets et leur lecture seule restent propres à l’ouverture courante.
+
 ## Monitoring
 
 Activé par défaut, il se désactive dans **Général → Activer le monitoring WSL**.
@@ -101,6 +136,7 @@ d'import/export sont des chemins Windows absolus sur un disque local.
 | Nouvel onglet / fermer l'onglet | Ctrl+Maj+T / Ctrl+Maj+W |
 | Onglet suivant / précédent | Ctrl+Tab / Ctrl+Maj+Tab |
 | Paramètres | Ctrl+, |
+| Palette de commandes | Ctrl+Maj+P |
 | Copier / coller | Ctrl+Maj+C / Ctrl+Maj+V |
 | Coller | Maj+Inser |
 | Tout sélectionner | Ctrl+Maj+A |

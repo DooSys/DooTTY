@@ -55,6 +55,7 @@
     </button>
    </div>
    <nav aria-label="Terminal" hidden="" id="terminal-menu">
+    <div id="saved-profile-menu" role="group" data-i18n-aria-label="workflow.profiles"></div>
     <div aria-label="Distributions WSL" data-i18n-aria-label="accessibility.distributions" id="distribution-menu" role="group">
     </div>
     <div class="separator">
@@ -108,6 +109,10 @@
       Ctrl+Maj+F
      </kbd>
     </button>
+    <button id="workflow-palette" type="button"><span data-i18n="workflow.palette"></span><kbd>Ctrl+Maj+P</kbd></button>
+    <button id="workflow-clear" type="button" data-i18n="workflow.clear"></button>
+    <button id="workflow-export" type="button" data-i18n="workflow.export"></button>
+    <button id="workflow-readOnly" type="button" data-i18n="workflow.readOnly"></button>
     <button data-i18n="common.reconnect" disabled="" id="reconnect">
      Reconnecter cet onglet
     </button>
@@ -292,9 +297,16 @@
         Chaque onglet ouvre une session indépendante dans votre
                 distribution existante.
        </div>
+       <h2 id="profiles-title" data-i18n="workflow.profiles"></h2>
+       <p class="hint" data-i18n="workflow.profileHint"></p>
+       <label class="setting-card"><span><strong data-i18n="workflow.defaultProfile"></strong><small data-i18n="workflow.defaultProfileHint"></small></span><select id="config-default-profile" data-i18n-aria-label="workflow.defaultProfile"></select></label>
+       <div id="profiles-list"></div>
+       <button id="profile-add" type="button" data-i18n="workflow.addProfile"></button>
        <h2 data-i18n="general.clipboard">
         Copier et coller
        </h2>
+       <label class="setting-card"><span><strong data-i18n="workflow.warnPaste"></strong><small data-i18n="workflow.warnPasteHint"></small></span><input class="switch" id="config-warn-paste" type="checkbox"/></label>
+
        <label class="setting-card">
         <span>
          <strong data-i18n="interaction.copy">
@@ -896,6 +908,33 @@
     </button>
    </div>
   </dialog>
+  <nav id="tab-context-menu" class="workflow-popup" role="menu" hidden></nav>
+  <dialog id="command-palette" class="workflow-dialog" data-i18n-aria-label="workflow.palette">
+   <div class="palette-heading"><strong data-i18n="workflow.palette"></strong><button id="command-close" type="button" data-i18n-aria-label="workflow.cancel">✕</button></div>
+   <input id="command-query" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="command-results" data-i18n-aria-label="workflow.commandSearch" data-i18n-placeholder="workflow.commandSearch" autocomplete="off"/>
+   <div id="command-results" role="listbox" data-i18n-aria-label="workflow.palette"></div><p id="command-empty" data-i18n="workflow.noCommands" hidden></p>
+  </dialog>
+  <dialog id="rename-dialog" class="workflow-dialog" aria-labelledby="rename-title"><form method="dialog">
+   <h2 id="rename-title" data-i18n="workflow.rename"></h2><p data-i18n="workflow.renameHint"></p>
+   <input id="tab-name" maxlength="80" autofocus data-i18n-aria-label="workflow.name"/>
+   <div class="dialog-actions"><button type="button" value="cancel" data-i18n="workflow.cancel"></button><button value="accept" class="primary" data-i18n="workflow.apply"></button></div>
+  </form></dialog>
+  <dialog id="paste-dialog" class="workflow-dialog" aria-labelledby="paste-title"><form method="dialog">
+   <h2 id="paste-title" data-i18n="workflow.pasteTitle"></h2><p data-i18n="workflow.pasteHint"></p><pre id="paste-preview"></pre>
+   <div class="dialog-actions"><button type="button" value="cancel" autofocus data-i18n="workflow.cancel"></button><button value="accept" class="primary" data-i18n="common.paste"></button></div>
+  </form></dialog>
+  <dialog id="close-others-dialog" class="workflow-dialog" aria-labelledby="close-others-title"><form method="dialog">
+   <h2 id="close-others-title" data-i18n="workflow.closeOthers"></h2><p id="close-others-message"></p>
+   <div class="dialog-actions"><button type="button" value="cancel" autofocus data-i18n="workflow.cancel"></button><button value="accept" class="danger" data-i18n="workflow.closeOthers"></button></div>
+  </form></dialog>
+  <dialog id="profile-dialog" class="workflow-dialog" aria-labelledby="profile-title"><form id="profile-editor" method="dialog">
+   <h2 id="profile-title" data-i18n="workflow.profileEditor"></h2>
+   <label><span data-i18n="workflow.name"></span><input id="profile-name" maxlength="80" required autofocus/></label>
+   <label><span data-i18n="startup.distribution"></span><select id="profile-distribution" data-i18n-aria-label="startup.distribution"></select></label>
+   <label><span data-i18n="startup.username"></span><input id="profile-user" maxlength="1024" data-i18n-placeholder="startup.defaultUserPlaceholder"/></label>
+   <label><span data-i18n="startup.directory"></span><input id="profile-directory" maxlength="1024" required/></label>
+   <div class="dialog-actions"><button type="button" value="cancel" formnovalidate data-i18n="workflow.cancel"></button><button value="accept" class="primary" data-i18n="workflow.apply"></button></div>
+  </form></dialog>
   <script src="/src/main.ts" type="module">
   </script>
  </body>

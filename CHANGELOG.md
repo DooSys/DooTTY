@@ -1,5 +1,15 @@
 # Changements
 
+## Non publié
+
+- Profils de lancement enregistrés et choix du profil d’ouverture.
+- Menu contextuel des onglets : renommage, duplication et fermeture des autres terminaux.
+- Palette de commandes accessible avec Ctrl+Maj+P.
+- Effacement de l’écran/historique et export du buffer actif en texte UTF-8.
+- Confirmation facultative du collage multiligne avec aperçu.
+- Lecture seule par onglet, sans interrompre la réception des sorties.
+- Tests de l’interface de production ajoutés aux workflows Windows et de release.
+
 ## 0.0.7
 
 - Lecture UTF-8 explicite des sources NSIS pour préserver les accents de l’installeur Windows.

@@ -102,6 +102,8 @@ class ThemedSelect {
   private open(): void {
     if (this.button.disabled) return;
     closeSelects();
+    // A modal dialog makes body-level popups inert; keep its select popup inside it.
+    (this.select.closest('dialog[open]') ?? document.body).append(this.popup);
     this.expanded = true;
     this.popup.hidden = false;
     this.highlighted = Math.max(

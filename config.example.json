@@ -19,8 +19,11 @@
     "trimPasteWhitespace": false,
     "trimPasteNewlines": false,
     "rectangularSelection": false,
-    "warnOnClose": true
+    "warnOnClose": true,
+    "warnMultilinePaste": false
   },
   "wslSettingsPath": "C:\\Program Files\\WSL\\wslsettings\\wslsettings.exe",
-  "monitoringEnabled": true
+  "monitoringEnabled": true,
+  "profiles": [],
+  "defaultProfileId": null
 }

@@ -82,6 +82,30 @@ async fn save_config(config: Config) -> Result<Config, String> {
 }
 
 #[tauri::command]
+async fn export_terminal_text(window: tauri::WebviewWindow, text: String) -> Result<bool, String> {
+    static BUSY: AtomicBool = AtomicBool::new(false);
+    if text.len() > dootty::terminal_export::MAX_BYTES {
+        return Err("Export supérieur à 8 Mio.".into());
+    }
+    let parent = window.hwnd().map_err(|e| e.to_string())?.0 as isize;
+    if BUSY.swap(true, Ordering::AcqRel) {
+        return Err("Un export est déjà ouvert.".into());
+    }
+    struct BusyGuard;
+    impl Drop for BusyGuard {
+        fn drop(&mut self) {
+            BUSY.store(false, Ordering::Release);
+        }
+    }
+    tauri::async_runtime::spawn_blocking(move || {
+        let _guard = BusyGuard;
+        windows_util::export_terminal_text(parent, text)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
 async fn start_session(
     state: State<'_, Sessions>,
     cols: u16,
@@ -420,6 +444,7 @@ fn run_inner() -> Result<(), String> {
         .invoke_handler(tauri::generate_handler![
             session_config,
             save_config,
+            export_terminal_text,
             start_session,
             close_session,
             write_session,

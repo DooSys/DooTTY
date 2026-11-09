@@ -1056,3 +1056,23 @@ dialog > div {
 #wsl-operation-output { margin-top: 24px; }
 
 .management-heading + .wsl-update-card { margin-top: 8px; }
+
+/* Terminal workflow controls share the application's existing theme. */
+.workflow-popup { position: fixed; z-index: 1200; min-width: 255px; max-width: calc(100vw - 8px); padding: 5px; background: var(--panel, #292929); color: var(--text, #ededed); border: 1px solid var(--border, #414141); border-radius: 8px; box-shadow: 0 8px 28px #0005; }
+.workflow-popup button { display: block; width: 100%; text-align: left; padding: 9px 12px; }
+.workflow-dialog { max-width: 540px; width: min(540px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; }
+.workflow-dialog h2 { margin-top: 0; }
+.workflow-dialog p { color: var(--muted, #bbb); line-height: 1.5; }
+.workflow-dialog input { width: 100%; }
+.workflow-dialog label { display: grid; gap: 7px; margin: 15px 0; }
+.workflow-dialog pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 240px; overflow: auto; user-select: text; padding: 12px; border-radius: 5px; background: var(--canvas, #0c0c0c); }
+.palette-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+#command-results { max-height: 360px; overflow: auto; margin-top: 10px; }
+#command-results button { display: block; width: 100%; text-align: left; }
+#command-results button[aria-selected="true"] { background: var(--selected, #344353); }
+.profile-card > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.profile-actions { display: flex; gap: 4px; flex-shrink: 0; }
+#saved-profile-menu:empty { display: none; }
+#saved-profile-menu:not(:empty) { border-bottom: 1px solid var(--border, #414141); margin-bottom: 5px; padding-bottom: 5px; }
+.workflow-dialog > .select-popup, #command-results { display: block; }
+.session-tab.read-only .tab-title::before { content: ''; display: inline-block; width: 12px; height: 12px; margin-right: 5px; background-color: var(--accent, #60cdff); mask: url('/assets/icons/lock.svg') center / contain no-repeat; }

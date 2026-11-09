@@ -13,7 +13,8 @@
     "check:translations": "node scripts/check-translations.mjs",
     "check:security": "npm run check:translations && npm audit --audit-level=moderate",
     "check:public": "node scripts/check-public.mjs",
-    "build:installer": "node scripts/build-installer.mjs"
+    "build:installer": "node scripts/build-installer.mjs",
+    "test:ui": "node scripts/smoke-terminal-ui.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "2.12.4",
@@ -25,6 +26,7 @@
   },
   "devDependencies": {
     "@tauri-apps/cli": "2.12.4",
+    "playwright": "1.64.1",
     "typescript": "7.0.2",
     "vite": "8.3.5",
     "vitest": "5.1.0"

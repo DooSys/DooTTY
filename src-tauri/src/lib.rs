@@ -6,4 +6,5 @@ pub mod monitor;
 pub mod paths;
 pub mod session;
 pub mod storage;
+pub mod terminal_export;
 pub mod updates;
