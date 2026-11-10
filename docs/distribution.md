@@ -1,6 +1,6 @@
 # Distribution Windows
 
-DooTTY 0.0.7 utilise un seul fichier `DooTTY-0.0.7-setup.exe` pour les deux modes.
+DooTTY 0.0.8 utilise un seul fichier `DooTTY-0.0.8-setup.exe` pour les deux modes.
 Une interface Windows standard et claire, avec un seul logo dans la barre de titre
 et l’accent bleu DooTTY, propose un parcours court,
 en français ou en anglais selon Windows.
