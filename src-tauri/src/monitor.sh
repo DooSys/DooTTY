@@ -18,7 +18,7 @@ awk '
     for (i=7; i<=NF; i++) if ($i == "-") {
       source=$(i+2)
       if ($5 == "/") root=source
-      else if ($5 !~ /^\/usr\/(lib\/(linux-tools|wsl)|src\/linux-headers)(\/|-|$)/ && $5 !~ /^\/mnt\/wslg(\/|$)/ &&
+      else if ($5 !~ /^\/usr\/lib\/(linux-tools|wsl)(\/|$)/ && $5 !~ /^\/usr\/src\/linux-headers(-|\/|$)/ && $5 !~ /^\/mnt\/wslg(\/|$)/ &&
           ((source ~ /^\/dev\// && source !~ /^\/dev\/loop/) || source ~ /^[A-Za-z]:/)) {
         mounts[++n]=$5; devices[n]=source
       }

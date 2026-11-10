@@ -252,6 +252,7 @@
     "tooLarge": "Entrée trop volumineuse : attendez la fin du collage en cours."
   },
   "keys": {
+    "palette": "Ctrl+Maj+P",
     "newTab": "Ctrl+Maj+T",
     "copy": "Ctrl+Maj+C",
     "paste": "Ctrl+Maj+V",

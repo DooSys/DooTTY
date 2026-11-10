@@ -78,6 +78,7 @@ try {
             {device:"/dev/sdd",mount:"/",total:1024**4,used:100*1024**3,available:900*1024**3},
             {device:"C:\\",mount:"/mnt/c",total:476*1024**3,used:421*1024**3,available:55*1024**3},
             {device:"D:\\",mount:"/mnt/d",total:477*1024**3,used:393*1024**3,available:85*1024**3},
+            {device:"/dev/sdz",mount:"/usr/lib/linux-tools-custom",total:20*1024**3,used:2*1024**3,available:18*1024**3},
             {device:"none",mount:"/mnt/wslg",total:4*1024**3,used:100,available:4*1024**3-100},
           ],
         };
@@ -137,10 +138,11 @@ try {
   await page.goto("http://127.0.0.1:1423");
   await page.locator('.session-tab[data-state="connected"]').waitFor();
   await page.locator("#monitor-toggle").click();
-  await page.waitForFunction(() => document.querySelectorAll(".monitor-filesystem").length === 4);
+  await page.waitForFunction(() => document.querySelectorAll(".monitor-filesystem").length === 5);
   assert.equal(await page.locator(".monitor-filesystem-heading strong").first().innerText(), "/");
-  assert.equal(await page.locator("#monitor-filesystems").innerText().then(text => text.includes("linux-tools")), false);
-  assert.equal(await page.locator(".monitor-filesystem dl dd").count(), 12);
+  assert.equal(await page.locator(".monitor-filesystem-heading strong").last().innerText(), "/usr/lib/linux-tools-custom");
+  assert.equal(await page.locator("#monitor-filesystems").innerText().then(text => text.includes("linux-tools/6.")), false);
+  assert.equal(await page.locator(".monitor-filesystem dl dd").count(), 15);
   assert(await page.locator(".monitor-filesystem").first().evaluate(card =>
     Math.abs(card.querySelector("dt").getBoundingClientRect().left - card.querySelector("dd").getBoundingClientRect().left) < 1 && card.querySelector("dd").getBoundingClientRect().top > card.querySelector("dt").getBoundingClientRect().bottom,
   ));
@@ -479,6 +481,12 @@ try {
   before=await writes();
   await page.keyboard.type('resumed');
   await page.waitForFunction(count=>window.calls.filter(c=>c.command==='write_session').length>count,before);
+  await page.locator('#settings-toggle').click();
+  await page.locator('#config-language-button').click();
+  await page.locator('#config-language-options [role=option]').filter({hasText:'English'}).click();
+  await page.locator('#save-settings').click();
+  await page.waitForFunction(()=>document.querySelector('#save-settings').disabled);
+  assert.equal(await page.locator('#workflow-palette kbd').innerText(), 'Ctrl+Shift+P');
   assert.deepEqual(errors, []);
   console.log(
     "PASS: profile CRUD/default/persistence, modal combo, tab rename/duplicate, read-only input/paste blocking and live output/copy, editable full paste preview/cancel/confirm, settings save state, chrome context menus, storage cards, ConPTY cursor after clearing history, palette, export, clear and close-others confirmation.",

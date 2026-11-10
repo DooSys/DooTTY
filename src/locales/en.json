@@ -252,6 +252,7 @@
     "tooLarge": "Input is too large: wait for the current paste to finish."
   },
   "keys": {
+    "palette": "Ctrl+Shift+P",
     "newTab": "Ctrl+Shift+T",
     "copy": "Ctrl+Shift+C",
     "paste": "Ctrl+Shift+V",
