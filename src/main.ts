@@ -103,7 +103,8 @@ function activate(key: string): void {
     requestAnimationFrame(() => {
       if (activeKey === key) {
         selected.resize();
-        selected.terminal.focus();
+        if (el("tab-context-menu").hidden && !document.querySelector("dialog[open]") && el("search").hidden)
+          selected.terminal.focus();
       }
     });
   updateActions();
@@ -180,6 +181,8 @@ class TerminalTab {
   private generation = 0;
   private hasShellTitle = false;
   private input: InputQueue | null = null;
+  private inputCleanup: Promise<void> = Promise.resolve();
+  private inputRevision = 0;
   private pendingSize: { id: number; cols: number; rows: number } | null = null;
   private resizing = false;
   private lastSize: { id: number; cols: number; rows: number } | null = null;
@@ -292,9 +295,13 @@ class TerminalTab {
   setReadOnly(value: boolean): void {
     this.readOnly = value;
     this.terminal.options.disableStdin = value;
-    this.input?.cancel(); this.input = null;
-    const id = this.sessionId;
-    if (!value && id !== null) this.input = new InputQueue(bytes => this.readOnly || this.sessionId !== id ? Promise.resolve() : invoke("write_session",{sessionId:id,bytes}), showError);
+    if (this.input) this.inputCleanup = this.input.cancel(true);
+    this.input = null;
+    const id = this.sessionId, revision = ++this.inputRevision;
+    if (!value && id !== null) void this.inputCleanup.then(() => {
+      if (!this.closed && !this.readOnly && this.sessionId === id && this.inputRevision === revision)
+        this.input = new InputQueue(bytes => this.closed || this.sessionId !== id ? Promise.resolve() : invoke("write_session",{sessionId:id,bytes}), showError);
+    });
     this.button.classList.toggle("read-only",value); this.updateTitle(); updateActions();
   }
   applyAppearance(): void {
@@ -426,7 +433,7 @@ class TerminalTab {
       if (!exited) {
         this.sessionId = id;
         this.input = new InputQueue(
-          (bytes) => this.readOnly || this.sessionId !== id ? Promise.resolve() : invoke("write_session", { sessionId: id, bytes }),
+          (bytes) => this.closed || this.sessionId !== id ? Promise.resolve() : invoke("write_session", { sessionId: id, bytes }),
           showError,
         );
         this.button.dataset.state = "connected";
@@ -468,9 +475,8 @@ class TerminalTab {
     const edited = await workflow?.confirmPaste(prepared, config.interaction.warnMultilinePaste);
     if (edited == null || this.closed || this.readOnly || this.sessionId !== id || this.generation !== generation) return;
     if (!clipboardFits(edited)) { showError(t("clipboard.tooLarge")); return; }
-    const finalText = preparePaste(edited, config.interaction);
-    if (!finalText) return;
-    this.terminal.paste(finalText);
+    if (!edited) return;
+    this.terminal.paste(edited);
     this.terminal.focus();
   }
   async restart(): Promise<void> {

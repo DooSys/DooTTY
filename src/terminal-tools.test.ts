@@ -35,3 +35,8 @@ it("identifies multiline pastes including a final newline which can execute a co
   for (const text of ["echo example\n", "a\rb", "a\r\nb"])
     expect(multilinePaste(text)).toBe(true);
 });
+
+it("applies the byte limit to the final text, excluding unused blank rows", () => {
+ expect(terminalText(buffer([{text:"é"},...Array.from({length:100},()=>({text:""}))]),3)).toBe("é\n");
+ expect(()=>terminalText(buffer([{text:"é"},{text:""},{text:"x"}]),4)).toThrow("EXPORT_TOO_LARGE");
+});

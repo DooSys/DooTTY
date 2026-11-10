@@ -21,6 +21,38 @@ fn pump(app: &mut tauri::App, duration: Duration) {
     }
 }
 
+#[derive(Default)]
+struct MonitorEnumeration {
+    areas: Vec<RECT>,
+    failed: bool,
+}
+
+// Own the application before any fallible window setup or assertion, so an
+// unwinding test cannot leave a window or its WebView2 data directory behind.
+struct TestEnvironment {
+    app: Option<tauri::App>,
+    window: Option<tauri::WebviewWindow>,
+    cache: std::path::PathBuf,
+}
+impl Drop for TestEnvironment {
+    fn drop(&mut self) {
+        if let Some(window) = self.window.take() {
+            let _ = window.destroy();
+        }
+        if let Some(app) = self.app.take() {
+            app.cleanup_before_exit();
+            drop(app);
+        }
+        // WebView2 can release its file handles shortly after window destruction.
+        for _ in 0..10 {
+            if std::fs::remove_dir_all(&self.cache).is_ok() || !self.cache.exists() {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(50));
+        }
+    }
+}
+
 unsafe extern "system" fn collect_monitors(
     monitor: HMONITOR,
     _: HDC,
@@ -31,9 +63,12 @@ unsafe extern "system" fn collect_monitors(
         cbSize: std::mem::size_of::<MONITORINFO>() as u32,
         ..Default::default()
     };
-    if GetMonitorInfoW(monitor, &mut info) != 0 {
-        (*(data as *mut Vec<RECT>)).push(info.rcWork);
+    let result = &mut *(data as *mut MonitorEnumeration);
+    if GetMonitorInfoW(monitor, &mut info) == 0 {
+        result.failed = true;
+        return 0;
     }
+    result.areas.push(info.rcWork);
     1
 }
 
@@ -42,10 +77,18 @@ fn terminal_last_row_remains_visible_on_each_monitor() {
     let measurements = Arc::new(Mutex::new(Vec::<serde_json::Value>::new()));
     let received = measurements.clone();
     let cache = std::env::temp_dir().join(format!("dootty-layout-test-{}", std::process::id()));
-    let mut app = tauri::Builder::default()
-        .any_thread()
-        .build(tauri::generate_context!())
-        .unwrap();
+    let mut environment = TestEnvironment {
+        app: None,
+        window: None,
+        cache: cache.clone(),
+    };
+    environment.app = Some(
+        tauri::Builder::default()
+            .any_thread()
+            .build(tauri::generate_context!())
+            .unwrap(),
+    );
+    let app = environment.app.as_mut().unwrap();
     let window = tauri::WebviewWindowBuilder::new(
         app.handle(),
         "terminal-layout-test",
@@ -64,8 +107,9 @@ fn terminal_last_row_remains_visible_on_each_monitor() {
     })
     .build()
     .unwrap();
+    environment.window = Some(window.clone());
     super::window_bounds_windows::install(&window).unwrap();
-    pump(&mut app, Duration::from_millis(300));
+    pump(app, Duration::from_millis(300));
     let css = include_str!("../../src/style.css")
         .lines()
         .filter(|line| !line.starts_with("@import "))
@@ -88,6 +132,9 @@ fn terminal_last_row_remains_visible_on_each_monitor() {
         terminal.open(document.querySelector('.terminal-pane'));
         let sequence = 0;
         window.measureLayout = () => {{
+            const background = document.documentElement.dataset.theme === 'light' ? '#f7f7f7' : '#0c0c0c';
+            document.querySelector('.terminal-pane').style.setProperty('--terminal-background', background);
+            terminal.options.theme = {{background}};
             fit.fit();
             terminal.write('test prompt\r\n'.repeat(200), () => requestAnimationFrame(() => {{
                 const pane = document.querySelector('.terminal-pane');
@@ -101,6 +148,8 @@ fn terminal_last_row_remains_visible_on_each_monitor() {
                     lastRowBottom: pane.querySelector('.xterm-rows').lastElementChild.getBoundingClientRect().bottom,
                     separator: parseFloat(getComputedStyle(document.body).borderBottomWidth),
                     legacyOverflow: getComputedStyle(pane.querySelector('.xterm-viewport')).overflowY,
+                    viewportBackground: getComputedStyle(pane.querySelector('.xterm-viewport')).backgroundColor,
+                    paneBackground: getComputedStyle(pane).backgroundColor,
                     scrollbarTop: scrollbar.getBoundingClientRect().top,
                     scrollbarBottom: scrollbar.getBoundingClientRect().bottom,
                     scrollbarWidth: getComputedStyle(scrollbar).width,
@@ -119,30 +168,32 @@ fn terminal_last_row_remains_visible_on_each_monitor() {
         serde_json::to_string(&styles).unwrap(),
     );
     window.eval(fixture).unwrap();
-    let mut monitors = Vec::<RECT>::new();
-    unsafe {
+    let mut monitors = MonitorEnumeration::default();
+    let enumerated = unsafe {
         EnumDisplayMonitors(
             std::ptr::null_mut(),
             std::ptr::null(),
             Some(collect_monitors),
-            &mut monitors as *mut Vec<RECT> as LPARAM,
-        );
-    }
-    assert!(!monitors.is_empty(), "No Windows work area available");
+            &mut monitors as *mut MonitorEnumeration as LPARAM,
+        )
+    };
+    assert!(!monitors.failed, "GetMonitorInfoW failed for a display");
+    assert_ne!(enumerated, 0, "EnumDisplayMonitors failed");
+    assert!(!monitors.areas.is_empty(), "No Windows work area available");
     let mut native_bounds = Vec::new();
-    for work in monitors {
+    for work in monitors.areas {
         window.unmaximize().unwrap();
         window
             .set_position(tauri::PhysicalPosition::new(work.left + 30, work.top + 30))
             .unwrap();
-        pump(&mut app, Duration::from_millis(300));
+        pump(app, Duration::from_millis(300));
         for maximized in [false, true, false, true] {
             if maximized {
                 window.maximize().unwrap();
             } else {
                 window.unmaximize().unwrap();
             }
-            pump(&mut app, Duration::from_millis(300));
+            pump(app, Duration::from_millis(300));
             for theme in ["dark", "light"] {
                 let count = measurements.lock().unwrap().len();
                 window
@@ -152,7 +203,7 @@ fn terminal_last_row_remains_visible_on_each_monitor() {
                     .unwrap();
                 let deadline = Instant::now() + Duration::from_secs(10);
                 while measurements.lock().unwrap().len() == count && Instant::now() < deadline {
-                    pump(&mut app, Duration::from_millis(20));
+                    pump(app, Duration::from_millis(20));
                 }
                 assert!(
                     measurements.lock().unwrap().len() > count,
@@ -177,10 +228,9 @@ fn terminal_last_row_remains_visible_on_each_monitor() {
         }
     }
     window.destroy().unwrap();
-    pump(&mut app, Duration::from_millis(100));
-    app.cleanup_before_exit();
-    drop(app);
-    let _ = std::fs::remove_dir_all(cache);
+    pump(app, Duration::from_millis(100));
+    drop(window);
+    drop(environment);
     for (client, work) in native_bounds {
         assert!(
             client.left >= work.left
@@ -214,6 +264,10 @@ fn terminal_last_row_remains_visible_on_each_monitor() {
         assert!(
             value("scrollbarTop") >= 0.0 && value("scrollbarBottom") <= value("paneBottom") + 0.5,
             "Scrollbar is clipped: {result}"
+        );
+        assert_eq!(
+            result["viewportBackground"], result["paneBackground"],
+            "Terminal padding ignores its console theme"
         );
         assert_eq!(result["scrollbarWidth"], result["monitoringWidth"]);
         assert_eq!(result["thumbColor"], result["monitoringColor"]);

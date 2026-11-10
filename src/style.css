@@ -222,6 +222,7 @@ kbd {
 /* xterm 6 scrolls through its scrollable element. The legacy viewport is
    retained for layout/overview rendering and must not paint a second scrollbar. */
 .terminal-pane .xterm-viewport {
+  background-color: var(--terminal-background, var(--canvas, #0c0c0c));
   overflow: hidden;
 }
 /* Same 14px track and 6px rounded thumb on monitoring and terminal history. */
@@ -984,9 +985,9 @@ dialog > div {
 .monitor-filesystem-bar span { display: block; height: 100%; border-radius: inherit; background: var(--accent, #74cbe5); }
 .monitor-filesystem-bar[data-load="high"] span { background: var(--warning, #f4c36b); }
 .monitor-filesystem-bar[data-load="critical"] span { background: var(--danger, #ff8383); }
-.monitor-filesystem dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 10px; margin: 0; font-size: 11px; line-height: 1.5; }
-.monitor-filesystem dt { margin: 0; color: var(--muted, #acb5c3); }
-.monitor-filesystem dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.monitor-filesystem dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 8px; margin: 0; font-size: 11px; line-height: 1.5; }
+.monitor-filesystem dt { grid-row: 1; margin: 0; color: var(--muted, #acb5c3); }
+.monitor-filesystem dd { grid-row: 2; margin: 0; text-align: left; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .icon-button { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; padding: 7px; flex-shrink: 0; }
 .icon-button svg, .icon-button img { width: 20px; height: 20px; }
 .icon-button svg { fill: none; stroke: currentColor; stroke-width: 1.5; }

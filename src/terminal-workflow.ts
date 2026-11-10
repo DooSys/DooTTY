@@ -5,6 +5,7 @@ import type {
   LaunchProfile,
   SavedProfile,
 } from "./settings";
+import { createProfile } from "./settings";
 import { t } from "./i18n";
 import { refreshSelect, closeSelects } from "./select";
 import { invoke } from "@tauri-apps/api/core";
@@ -58,6 +59,7 @@ export function initializeTerminalWorkflow(hooks: Hooks) {
   let contextKey: string | null = null;
   let paletteCommands: Command[] = [];
   let paletteIndex = 0;
+  let selectedCommand: Command | null = null;
   const context = el("tab-context-menu");
   const palette = el<HTMLDialogElement>("command-palette");
   const query = el<HTMLInputElement>("command-query");
@@ -194,7 +196,7 @@ export function initializeTerminalWorkflow(hooks: Hooks) {
         id: "readOnly",
         label: t(tab.readOnly ? "workflow.unlock" : "workflow.readOnly"),
         enabled: true,
-        run: () => tab.setReadOnly(!tab.readOnly),
+        run: () => { tab.setReadOnly(!tab.readOnly); focus(); },
       },
       {
         id: "clear",
@@ -233,11 +235,7 @@ export function initializeTerminalWorkflow(hooks: Hooks) {
         label: `${t("common.newTab")} · ${d.name}`,
         enabled: hooks.tabs().length < 32,
         run: () =>
-          hooks.open({
-            distribution: d.name,
-            username: null,
-            directory: "~",
-          }),
+          hooks.open(createProfile(hooks.config(), d.name)),
       })),
       ...tabCommands(tab),
       {
@@ -316,8 +314,8 @@ export function initializeTerminalWorkflow(hooks: Hooks) {
       button.setAttribute("aria-selected", String(index === paletteIndex));
       button.textContent = command.label;
       button.onclick = () => {
+        selectedCommand = command;
         palette.close();
-        run(command.run);
       };
       list.append(button);
     }
@@ -339,6 +337,7 @@ export function initializeTerminalWorkflow(hooks: Hooks) {
     query.value = "";
     paletteIndex = 0;
     renderPalette();
+    selectedCommand = null;
     palette.showModal();
     query.focus();
   }
@@ -359,15 +358,18 @@ export function initializeTerminalWorkflow(hooks: Hooks) {
       event.preventDefault();
       const command = paletteCommands[paletteIndex];
       if (command) {
+        selectedCommand = command;
         palette.close();
-        run(command.run);
       }
     }
   };
   palette.addEventListener("close", () => {
     query.value = "";
     el("command-results").replaceChildren();
-    focus();
+    const command = selectedCommand;
+    selectedCommand = null;
+    if (command) run(command.run);
+    else focus();
   });
   el("command-close").onclick = () => palette.close();
   document.addEventListener(
@@ -505,6 +507,7 @@ export function initializeTerminalWorkflow(hooks: Hooks) {
   }
   function editProfile(profile?: SavedProfile) {
     if (document.querySelector("dialog[open]")) return;
+    el("profile-error").hidden = true;
     editingId = profile?.id ?? null;
     el<HTMLInputElement>("profile-name").value = profile?.name ?? "";
     el<HTMLInputElement>("profile-user").value = profile?.username ?? "";
@@ -521,6 +524,7 @@ export function initializeTerminalWorkflow(hooks: Hooks) {
     profileDialog.showModal();
   }
   el("profile-add").onclick = () => editProfile();
+  el("profile-editor").addEventListener("input", () => { el("profile-error").hidden = true; });
   el<HTMLFormElement>("profile-editor").onsubmit = (event) => {
     event.preventDefault();
     const name = el<HTMLInputElement>("profile-name").value.trim();
@@ -533,10 +537,10 @@ export function initializeTerminalWorkflow(hooks: Hooks) {
         (s) => !s || /[\u0000-\u001f\u007f-\u009f]/.test(s),
       ) ||
       [distribution, username ?? "user", directory].some((s) =>
-        s.startsWith("-"),
+        new TextEncoder().encode(s).length > 1024 || s.startsWith("-"),
       )
     ) {
-      hooks.error(t("workflow.invalidProfile"));
+      el("profile-error").hidden = false;
       return;
     }
     const saved: SavedProfile = {

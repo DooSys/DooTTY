@@ -331,9 +331,9 @@
     "total": "Total",
     "uptime": "Kernel uptime: {{value}} h",
     "history": "Last 5 minutes · sampled every 2 s",
-    "rootVolume": "Linux root",
+    "usedShort": "Used",
     "used": "Space used",
-    "filesystems": "Linux volumes",
+    "filesystems": "Storage",
     "openFolder": "Open the profile folder in Windows Explorer",
     "profileFolder": "Profile folder",
     "stopped": "Distribution stopped: reconnect the terminal."

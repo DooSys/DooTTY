@@ -76,8 +76,13 @@ try {
             {device:"/dev/sdb",mount:"/usr/lib/linux-tools/6.18.54.1-microsoft-standard-WSL2",total:100*1024**2,used:100*1024**2,available:0},
             {device:"/dev/sde",mount:"/data",total:100*1024**3,used:90*1024**3,available:10*1024**3},
             {device:"/dev/sdd",mount:"/",total:1024**4,used:100*1024**3,available:900*1024**3},
+            {device:"C:\\",mount:"/mnt/c",total:476*1024**3,used:421*1024**3,available:55*1024**3},
+            {device:"D:\\",mount:"/mnt/d",total:477*1024**3,used:393*1024**3,available:85*1024**3},
+            {device:"none",mount:"/mnt/wslg",total:4*1024**3,used:100,available:4*1024**3-100},
           ],
         };
+        if (command === "write_session" && window.holdInput)
+          await new Promise(resolve => { window.releaseInput = resolve; });
         if (command === "clipboard_read") return window.clipboardText;
         if (command === "clipboard_write") {
           window.clipboardText = args.text;
@@ -132,14 +137,14 @@ try {
   await page.goto("http://127.0.0.1:1423");
   await page.locator('.session-tab[data-state="connected"]').waitFor();
   await page.locator("#monitor-toggle").click();
-  await page.waitForFunction(() => document.querySelectorAll(".monitor-filesystem").length === 2);
-  assert.equal(await page.locator(".monitor-filesystem-heading strong").first().innerText(), "Racine Linux");
+  await page.waitForFunction(() => document.querySelectorAll(".monitor-filesystem").length === 4);
+  assert.equal(await page.locator(".monitor-filesystem-heading strong").first().innerText(), "/");
   assert.equal(await page.locator("#monitor-filesystems").innerText().then(text => text.includes("linux-tools")), false);
-  assert.equal(await page.locator(".monitor-filesystem dl dd").count(), 4);
+  assert.equal(await page.locator(".monitor-filesystem dl dd").count(), 12);
   assert(await page.locator(".monitor-filesystem").first().evaluate(card =>
-    Math.abs(card.querySelector("dt").getBoundingClientRect().top - card.querySelector("dd").getBoundingClientRect().top) < 1,
+    Math.abs(card.querySelector("dt").getBoundingClientRect().left - card.querySelector("dd").getBoundingClientRect().left) < 1 && card.querySelector("dd").getBoundingClientRect().top > card.querySelector("dt").getBoundingClientRect().bottom,
   ));
-  assert.equal(await page.locator(".monitor-filesystem-bar").last().getAttribute("data-load"), "critical");
+  assert.equal(await page.locator(".monitor-filesystem-bar").nth(1).getAttribute("data-load"), "critical");
   assert.equal(await page.locator("#monitor-identity").innerText().then(text => text.match(/6\.18\.54\.1/g)?.length), 1);
   const contextPrevented = selector => page.locator(selector).evaluate(element => {
     const event = new MouseEvent("contextmenu", {bubbles:true,cancelable:true});
@@ -162,6 +167,10 @@ try {
   await page.locator("#profile-add").click();
   await page.locator("#profile-name").fill("Developer");
   await page.locator("#profile-user").fill("developer");
+  await page.locator("#profile-directory").fill("é".repeat(600));
+  await page.locator("#profile-editor button[value=accept]").click();
+  assert(await page.locator("#profile-dialog").isVisible());
+  assert(await page.locator("#profile-error").isVisible());
   await page.locator("#profile-directory").fill("/home/developer/project one");
   await page.locator("#profile-distribution-button").click();
   await page
@@ -176,6 +185,7 @@ try {
     .filter({ hasText: "Developer" })
     .click();
   await page.locator("#config-warn-paste").check();
+  await page.locator("#config-trim-newlines").check();
   await page.locator("#save-settings").click();
   await page.waitForFunction(
     () =>
@@ -215,6 +225,10 @@ try {
     await page
       .locator(".session-tab.active .tab-select")
       .click({ button: "right" });
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    assert(await page.locator("#tab-context-menu").evaluate(menu => menu.contains(document.activeElement)));
+    await page.keyboard.press("ArrowDown");
+    assert(await page.locator("#tab-context-menu").evaluate(menu => menu.contains(document.activeElement)));
     await page.locator(`#tab-context-menu [data-action=${action}]`).click();
   };
   await context("rename");
@@ -268,9 +282,6 @@ try {
     /READONLY OUTPUT/,
   );
   await context("readOnly");
-  await page
-    .locator(".terminal-pane:not([hidden]) .xterm-helper-textarea")
-    .focus();
   await page.keyboard.type("ok");
   await page.waitForTimeout(50);
   assert((await writes()) > before);
@@ -318,6 +329,14 @@ try {
     await page.keyboard.press("Control+Shift+P");
     await page.locator("#command-query").fill(text);
   };
+  const wideText = await page.evaluate(() => {
+    const cols = window.calls.filter(c=>c.command==='resize_session' && c.args.sessionId===3).at(-1)?.args.cols
+      ?? window.calls.filter(c=>c.command==='start_session').at(-1).args.cols;
+    const text = 'x'.repeat(cols-1)+'界';
+    window.sessions[3].onmessage({kind:'data',bytes:Array.from(new TextEncoder().encode('\r\n'+text+'\r\n'))});
+    return text;
+  });
+  await page.waitForFunction(() => document.querySelector('.terminal-pane:not([hidden]) .xterm-rows')?.innerText.includes('界'));
   await palette("export");
   await page.locator("#command-query").press("Enter");
   await page.waitForFunction(() =>
@@ -331,6 +350,17 @@ try {
     ),
     /READONLY OUTPUT/,
   );
+  const exported = await page.evaluate(() => window.calls.find(c=>c.command==='export_terminal_text').args.text);
+  assert(exported.includes(wideText));
+  before = await writes();
+  await palette("Rechercher");
+  await page.locator("#command-query").press("Enter");
+  await page.waitForFunction(() => document.activeElement?.id==='query');
+  await page.evaluate(() => new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  await page.keyboard.type("focus-only");
+  assert.equal(await page.locator("#query").inputValue(), "focus-only");
+  assert.equal(await writes(), before);
+  await page.keyboard.press("Escape");
   await page.evaluate(() => window.sessions[3].onmessage({kind:"data",bytes:Array.from(new TextEncoder().encode(
     "\r\n" + "completed output\r\n".repeat(100) + "\x1b[20;1Hdeveloper@linux-host:~$ ",
   ))}));
@@ -397,7 +427,7 @@ try {
       2,
   );
   before = await writes();
-  await page.evaluate(() => (window.clipboardText = "stale paste\n"));
+  await page.evaluate(() => (window.clipboardText = "stale\npaste"));
   await page.keyboard.press("Control+Shift+V");
   await page.locator("#paste-dialog").waitFor({ state: "visible" });
   await page.evaluate(() =>
@@ -428,6 +458,27 @@ try {
     ),
     null,
   );
+  await page.waitForFunction(() => document.querySelector('#save-settings').disabled);
+  await page.locator('#config-username').fill('legacy-user');
+  await page.locator('#config-directory').fill('/srv/work');
+  await page.locator('#save-settings').click();
+  await page.waitForFunction(() => document.querySelector('#save-settings').disabled);
+  await palette('Debian');
+  await page.locator('#command-results button').filter({hasText:'Nouvel onglet · Debian'}).click();
+  await page.waitForFunction(() => window.calls.filter(c=>c.command==='start_session').at(-1).args.profile.username==='legacy-user');
+  assert.deepEqual(await page.evaluate(()=>window.calls.filter(c=>c.command==='start_session').at(-1).args.profile), {distribution:'Debian',username:'legacy-user',directory:'/srv/work'});
+  await page.evaluate(() => {window.holdInput=true;window.clipboardText='x'.repeat(20000);});
+  before=await writes();
+  await page.keyboard.press('Control+Shift+V');
+  await page.waitForFunction(()=>typeof window.releaseInput==='function');
+  await context('readOnly');
+  await page.evaluate(()=>{window.holdInput=false;window.releaseInput();});
+  await page.waitForFunction(count => window.calls.filter(c=>c.command==='write_session').length===count+2, before);
+  assert.deepEqual(await page.evaluate(()=>window.calls.filter(c=>c.command==='write_session').at(-1).args.bytes), [27,91,50,48,49,126]);
+  await context('readOnly');
+  before=await writes();
+  await page.keyboard.type('resumed');
+  await page.waitForFunction(count=>window.calls.filter(c=>c.command==='write_session').length>count,before);
   assert.deepEqual(errors, []);
   console.log(
     "PASS: profile CRUD/default/persistence, modal combo, tab rename/duplicate, read-only input/paste blocking and live output/copy, editable full paste preview/cancel/confirm, settings save state, chrome context menus, storage cards, ConPTY cursor after clearing history, palette, export, clear and close-others confirmation.",

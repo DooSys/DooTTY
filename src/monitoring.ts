@@ -2,7 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { distributionIcon } from './distribution-icons';
 import { formatBytes } from './settings';
 import { currentLanguage, onLanguageChanged, t } from './i18n';
-import { HISTORY_MS, measure, retainHistory, storageFilesystems, type Measurement, type Snapshot } from './monitoring-model';
+import { HISTORY_MS, measure, retainHistory, storageFilesystems, filesystemUsage, type Measurement, type Snapshot } from './monitoring-model';
 
 type Target = { sessionId: number; distribution: string; username: string | null };
 type History = { snapshot?: Snapshot; points: Measurement[] };
@@ -103,14 +103,14 @@ export function initializeMonitoring(options: { native: boolean; target: () => T
       const heading = document.createElement('div');
       heading.className = 'monitor-filesystem-heading';
       const name = document.createElement('strong');
-      name.textContent = fs.mount === '/' ? t('monitor.rootVolume') : fs.mount;
-      const usage = fs.total > 0 ? Math.max(0, Math.min(100, fs.used / fs.total * 100)) : null;
+      name.textContent = fs.mount;
+      const usage = filesystemUsage(fs);
       const value = document.createElement('span');
       value.textContent = percent(usage);
       heading.append(icon(paths.space), name, value);
       const device = document.createElement('small');
       device.className = 'monitor-filesystem-device';
-      device.textContent = fs.mount === '/' ? `/ · ${fs.device}` : fs.device;
+      device.textContent = fs.device;
       device.title = `${fs.mount} · ${fs.device}`;
       const bar = document.createElement('div');
       bar.className = 'monitor-filesystem-bar';
@@ -125,7 +125,7 @@ export function initializeMonitoring(options: { native: boolean; target: () => T
       fill.style.width = `${usage ?? 0}%`;
       bar.append(fill);
       const sizes = document.createElement('dl');
-      for (const [label, bytes] of [[t('monitor.free'), fs.available], [t('monitor.total'), fs.total]] as const) {
+      for (const [label, bytes] of [[t('monitor.total'), fs.total], [t('monitor.usedShort'), fs.used], [t('monitor.free'), fs.available]] as const) {
         const term = document.createElement('dt'); term.textContent = label;
         const amount = document.createElement('dd'); amount.textContent = formatBytes(bytes);
         sizes.append(term, amount);

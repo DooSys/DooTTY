@@ -331,9 +331,9 @@
     "total": "Total",
     "uptime": "Noyau actif depuis {{value}} h",
     "history": "5 dernières minutes · lecture toutes les 2 s",
-    "rootVolume": "Racine Linux",
+    "usedShort": "Utilisé",
     "used": "Espace occupé",
-    "filesystems": "Volumes Linux",
+    "filesystems": "Stockage",
     "openFolder": "Ouvrir le dossier du profil dans l’Explorateur Windows",
     "profileFolder": "Dossier du profil",
     "stopped": "Distribution arrêtée : reconnectez le terminal."

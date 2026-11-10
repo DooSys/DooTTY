@@ -153,7 +153,11 @@ pub fn parse(text: &str) -> Result<Snapshot, String> {
         .flatten()
         .filter_map(|line| {
             let v: Vec<_> = line.split_whitespace().collect();
-            if v.len() < 6 || !v[0].starts_with('/') || !v[5].starts_with('/') {
+            let drive = v.first().is_some_and(|device| {
+                let bytes = device.as_bytes();
+                bytes.len() >= 2 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':'
+            });
+            if v.len() < 6 || !(v[0].starts_with('/') || drive) || !v[5].starts_with('/') {
                 return None;
             }
             Some(Filesystem {
@@ -258,6 +262,14 @@ mod tests {
         assert_eq!(s.disk_written, Some(3072));
         assert_eq!(s.filesystems[1].mount, "/a b");
         assert_eq!(s.filesystems[0].available, 71680);
+    }
+    #[test]
+    fn parses_windows_drive_storage_with_spaces_in_the_mount() {
+        let s = parse("@stat\ncpu 1 0 0 4\n@mem\nMemTotal: 10 kB\nMemFree: 5 kB\n@uptime\n3\n@df\nC:\\ 1000 800 180 82% /mnt/c\nD:\\ 2000 1500 400 79% /windows/data disk\n").unwrap();
+        assert_eq!(s.filesystems.len(), 2);
+        assert_eq!(s.filesystems[0].device, "C:\\");
+        assert_eq!(s.filesystems[1].mount, "/windows/data disk");
+        assert_eq!(s.filesystems[1].used, 1500 * 1024);
     }
     #[test]
     fn missing_optional_counters_stay_unavailable_and_invalid_snapshots_fail() {

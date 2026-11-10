@@ -928,6 +928,7 @@
    <div class="dialog-actions"><button type="button" value="cancel" autofocus data-i18n="workflow.cancel"></button><button value="accept" class="danger" data-i18n="workflow.closeOthers"></button></div>
   </form></dialog>
   <dialog id="profile-dialog" class="workflow-dialog" aria-labelledby="profile-title"><form id="profile-editor" method="dialog">
+   <p id="profile-error" role="alert" hidden data-i18n="workflow.invalidProfile"></p>
    <h2 id="profile-title" data-i18n="workflow.profileEditor"></h2>
    <label><span data-i18n="workflow.name"></span><input id="profile-name" maxlength="80" required autofocus/></label>
    <label><span data-i18n="startup.distribution"></span><select id="profile-distribution" data-i18n-aria-label="startup.distribution"></select></label>
