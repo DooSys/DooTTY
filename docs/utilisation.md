@@ -96,12 +96,18 @@ et E/S du disque racine correspondent à l'espace de montage de la distribution.
 Le monitoring n'attribue pas ces ressources à ses seuls processus et ne surveille
 pas les machines SSH distantes. L'utilisateur affiché est celui du profil de lancement.
 
-La section **Stockage** présente `/`, les volumes de données Linux et les lecteurs
-Windows montés (par exemple `/mnt/c` et `/mnt/d`). Les montages WSLg, images du noyau,
-volumes temporaires et doublons ne sont pas affichés. Chaque entrée indique la
-capacité, l’espace utilisé et disponible. Le pourcentage suit la formule de `df`,
-qui tient compte des blocs réservés sous Linux ; les lecteurs Windows restent
-communs aux distributions qui les montent.
+La section **Stockage Linux** présente `/` et les volumes de données Linux.
+Les montages techniques et les lecteurs Windows montés dans Linux sont écartés.
+Pour `/`, le total et le libre sont indiqués comme **virtuels** : ils décrivent
+le système de fichiers Linux, pas la capacité physique restante de Windows.
+
+En dessous, **Hôte du VHDX** affiche uniquement le volume Windows hébergeant le
+fichier de cette distribution et son espace libre disponible pour l’utilisateur.
+Le chemin réel du VHDX est résolu avant la mesure, y compris les jonctions. Cette
+information est mesurée par Windows, sans supposer que le fichier se trouve sur C:.
+Si elle est inaccessible, le volet indique « Indisponible ». Les deux mesures ne
+sont pas combinées en une estimation d’espace utilisable : un VHDX peut aussi
+réutiliser des blocs déjà alloués sur son hôte.
 
 Le bouton de dossier ouvre le répertoire de lancement du profil, résolu dans Linux,
 via l'Explorateur Windows. Il ne suit pas les changements de répertoire faits ensuite

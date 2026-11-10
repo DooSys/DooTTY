@@ -106,6 +106,80 @@ fn distributions() -> Result<Vec<Distribution>, String> {
     Ok(result)
 }
 
+/// Read only the Windows volume backing this distribution's actual VHDX.
+/// Canonicalization follows file/directory junctions; never assume the C: drive.
+pub fn vhd_host_storage(distribution: &str) -> Option<dootty::monitor::HostStorage> {
+    let root = RegKey::predef(HKEY_CURRENT_USER)
+        .open_subkey(r"Software\Microsoft\Windows\CurrentVersion\Lxss")
+        .ok()?;
+    // Read names only until the active distribution matches; do not stat the
+    // VHDX files of unrelated (possibly offline) distributions at every sample.
+    for name in root.enum_keys().flatten() {
+        let Ok(key) = root.open_subkey(name) else {
+            continue;
+        };
+        if key
+            .get_value::<String, _>("DistributionName")
+            .ok()
+            .as_deref()
+            != Some(distribution)
+        {
+            continue;
+        }
+        if key.get_value::<u32, _>("Version").ok() == Some(1) {
+            return None;
+        }
+        let base = expand_path(&key.get_value::<String, _>("BasePath").ok()?);
+        let file = key
+            .get_value::<String, _>("VhdFileName")
+            .unwrap_or_else(|_| "ext4.vhdx".into());
+        let vhd = std::fs::canonicalize(PathBuf::from(base).join(file)).ok()?;
+        return host_storage_for_directory(vhd.parent()?);
+    }
+    None
+}
+
+fn host_storage_for_directory(directory: &std::path::Path) -> Option<dootty::monitor::HostStorage> {
+    use windows_sys::Win32::Storage::FileSystem::{GetDiskFreeSpaceExW, GetVolumePathNameW};
+    let path: Vec<u16> = directory.as_os_str().encode_wide().chain(Some(0)).collect();
+    let mut volume = vec![0u16; 32768];
+    let mut available = 0;
+    unsafe {
+        if GetDiskFreeSpaceExW(
+            path.as_ptr(),
+            &mut available,
+            std::ptr::null_mut(),
+            std::ptr::null_mut(),
+        ) == 0
+            || GetVolumePathNameW(path.as_ptr(), volume.as_mut_ptr(), volume.len() as u32) == 0
+        {
+            return None;
+        }
+    }
+    let end = volume.iter().position(|&c| c == 0)?;
+    let volume = String::from_utf16(&volume[..end]).ok()?;
+    // Keep mount-folder/volume paths; strip only the extended Win32 prefix for display.
+    let volume = volume.strip_prefix(r"\\?\").unwrap_or(&volume).to_owned();
+    Some(dootty::monitor::HostStorage { volume, available })
+}
+
+#[cfg(test)]
+mod host_storage_tests {
+    use super::*;
+    #[test]
+    fn queries_existing_directory_and_does_not_guess_for_missing_paths() {
+        let directory = std::env::temp_dir();
+        let result = host_storage_for_directory(&directory)
+            .expect("Windows temporary volume should be readable");
+        assert!(!result.volume.is_empty());
+        assert!(result.volume.ends_with('\\'));
+        let missing = directory
+            .join(format!("dootty-missing-volume-{}", std::process::id()))
+            .join("missing");
+        assert!(host_storage_for_directory(&missing).is_none());
+    }
+}
+
 #[tauri::command]
 pub async fn list_terminal_fonts() -> Result<Vec<String>, String> {
     tauri::async_runtime::spawn_blocking(|| {

@@ -10,8 +10,8 @@ printf '@interface\n'; awk '$2 == "00000000" && $8 == "00000000" { print $1; exi
 printf '@net\n'; cat /proc/net/dev
 printf '@root\n'; awk '$5 == "/" { print $3; exit }' /proc/self/mountinfo
 printf '@disk\n'; cat /proc/diskstats
-# Query only actual storage mount points, once: root, block volumes and Windows
-# drives. Avoid tmpfs, WSLg, kernel images and remote/network mounts.
+# Query Linux storage only: root and block volumes, without technical mounts.
+# The Windows volume backing the VHDX is measured separately through Win32.
 printf '@df\n'
 awk '
   {
@@ -19,7 +19,7 @@ awk '
       source=$(i+2)
       if ($5 == "/") root=source
       else if ($5 !~ /^\/usr\/lib\/(linux-tools|wsl)(\/|$)/ && $5 !~ /^\/usr\/src\/linux-headers(-|\/|$)/ && $5 !~ /^\/mnt\/wslg(\/|$)/ &&
-          ((source ~ /^\/dev\// && source !~ /^\/dev\/loop/) || source ~ /^[A-Za-z]:/)) {
+          (source ~ /^\/dev\// && source !~ /^\/dev\/loop/)) {
         mounts[++n]=$5; devices[n]=source
       }
       break

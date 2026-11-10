@@ -86,7 +86,7 @@ export function initializeMonitoring(options: { native: boolean; target: () => T
       if(row.name==='memory') { row.value.textContent=percent(point?.memory??null); row.detail.textContent=snapshot?`${formatBytes(snapshot.memoryTotal-snapshot.memoryAvailable)} / ${formatBytes(snapshot.memoryTotal)} · ${t('monitor.swap')}: ${formatBytes(snapshot.swapTotal-snapshot.swapFree)} / ${formatBytes(snapshot.swapTotal)}`:''; }
       if(row.name==='network') { row.value.textContent=expanded?`${speed(point?.receive??null)} ↓` : compactSpeed(point?.receive??null); row.detail.textContent=`${snapshot?.interface??'—'} · ↑ ${speed(point?.transmit??null)}`; }
       if(row.name==='disk') { row.value.textContent=expanded?`${speed(point?.read??null)} ↓`:compactSpeed(point?.read??null); row.detail.textContent=`${t('monitor.write')}: ${speed(point?.write??null)}`; }
-      if(row.name==='space') { row.value.textContent=percent(point?.space??null); const root=snapshot?.filesystems.find(fs=>fs.mount==='/'); row.detail.textContent=root?`${t('monitor.free')}: ${formatBytes(root.available)} / ${formatBytes(root.total)}`:''; }
+      if(row.name==='space') { row.value.textContent=percent(point?.space??null); const root=snapshot?.filesystems.find(fs=>fs.mount==='/'); row.detail.textContent=root?`${t('monitor.usedShort')}: ${formatBytes(root.used)} · ${t('monitor.virtualTotal')}: ${formatBytes(root.total)}`:''; }
       const percentage = row.name==='cpu'?point?.cpu:row.name==='memory'?point?.memory:row.name==='space'?point?.space:null;
       row.value.dataset.load=percentage==null?'normal':percentage>=90?'critical':percentage>=75?'high':'normal';
       row.row.setAttribute('aria-label',`${label}: ${row.value.textContent}`);
@@ -125,7 +125,7 @@ export function initializeMonitoring(options: { native: boolean; target: () => T
       fill.style.width = `${usage ?? 0}%`;
       bar.append(fill);
       const sizes = document.createElement('dl');
-      for (const [label, bytes] of [[t('monitor.total'), fs.total], [t('monitor.usedShort'), fs.used], [t('monitor.free'), fs.available]] as const) {
+      for (const [label, bytes] of [[t(fs.mount === '/' ? 'monitor.virtualTotal' : 'monitor.total'), fs.total], [t('monitor.usedShort'), fs.used], [t(fs.mount === '/' ? 'monitor.virtualFree' : 'monitor.free'), fs.available]] as const) {
         const term = document.createElement('dt'); term.textContent = label;
         const amount = document.createElement('dd'); amount.textContent = formatBytes(bytes);
         sizes.append(term, amount);
@@ -133,6 +133,12 @@ export function initializeMonitoring(options: { native: boolean; target: () => T
       entry.append(heading, device, bar, sizes);
       filesystems.append(entry);
     }
+    const host = snapshot?.hostStorage;
+    document.getElementById('monitor-host-storage')!.hidden = !snapshot;
+    document.getElementById('monitor-host-volume')!.textContent = host?.volume ?? '—';
+    const hostAvailable = document.getElementById('monitor-host-available')!;
+    hostAvailable.textContent = host ? formatBytes(host.available) : t('monitor.unavailable');
+    hostAvailable.classList.toggle('host-full', host?.available === 0);
   }
   async function sample(): Promise<void> {
     clearTimeout(timer);

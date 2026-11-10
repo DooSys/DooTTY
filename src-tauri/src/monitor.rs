@@ -53,6 +53,14 @@ pub struct Snapshot {
     pub disk_read: Option<u64>,
     pub disk_written: Option<u64>,
     pub filesystems: Vec<Filesystem>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub host_storage: Option<HostStorage>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct HostStorage {
+    pub volume: String,
+    pub available: u64,
 }
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -153,11 +161,7 @@ pub fn parse(text: &str) -> Result<Snapshot, String> {
         .flatten()
         .filter_map(|line| {
             let v: Vec<_> = line.split_whitespace().collect();
-            let drive = v.first().is_some_and(|device| {
-                let bytes = device.as_bytes();
-                bytes.len() >= 2 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':'
-            });
-            if v.len() < 6 || !(v[0].starts_with('/') || drive) || !v[5].starts_with('/') {
+            if v.len() < 6 || !v[0].starts_with('/') || !v[5].starts_with('/') {
                 return None;
             }
             Some(Filesystem {
@@ -193,6 +197,7 @@ pub fn parse(text: &str) -> Result<Snapshot, String> {
         disk_read: disk.map(|n| n.0),
         disk_written: disk.map(|n| n.1),
         filesystems,
+        host_storage: None,
     })
 }
 
@@ -286,7 +291,7 @@ mod tests {
         assert!(output.status.success());
         assert_eq!(
             String::from_utf8(output.stdout).unwrap(),
-            "/usr/lib/linux-tools-custom\n/mnt/c\n"
+            "/usr/lib/linux-tools-custom\n"
         );
     }
     #[test]
@@ -303,12 +308,12 @@ mod tests {
         assert_eq!(s.filesystems[0].available, 71680);
     }
     #[test]
-    fn parses_windows_drive_storage_with_spaces_in_the_mount() {
-        let s = parse("@stat\ncpu 1 0 0 4\n@mem\nMemTotal: 10 kB\nMemFree: 5 kB\n@uptime\n3\n@df\nC:\\ 1000 800 180 82% /mnt/c\nD:\\ 2000 1500 400 79% /windows/data disk\n").unwrap();
-        assert_eq!(s.filesystems.len(), 2);
-        assert_eq!(s.filesystems[0].device, "C:\\");
-        assert_eq!(s.filesystems[1].mount, "/windows/data disk");
-        assert_eq!(s.filesystems[1].used, 1500 * 1024);
+    fn keeps_linux_storage_with_spaces_and_ignores_windows_drive_rows() {
+        let s = parse("@stat\ncpu 1 0 0 4\n@mem\nMemTotal: 10 kB\nMemFree: 5 kB\n@uptime\n3\n@df\nC:\\ 1000 800 180 82% /mnt/c\nD:\\ 2000 1500 400 79% /mnt/d\n/dev/sde 2000 1500 400 79% /data disk\n").unwrap();
+        assert_eq!(s.filesystems.len(), 1);
+        assert_eq!(s.filesystems[0].device, "/dev/sde");
+        assert_eq!(s.filesystems[0].mount, "/data disk");
+        assert_eq!(s.filesystems[0].used, 1500 * 1024);
     }
     #[test]
     fn missing_optional_counters_stay_unavailable_and_invalid_snapshots_fail() {

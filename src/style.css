@@ -1106,3 +1106,11 @@ dialog > div {
   tab-size: 4;
   user-select: text;
 }
+
+#monitor-host-storage { border-top: 1px solid var(--border, #343941); margin-top: 14px; padding-top: 12px; font-size: 11px; }
+.monitor-host-heading, .monitor-host-free { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin: 7px 0; }
+.monitor-host-heading { color: var(--muted, #acb5c3); }
+#monitor-host-volume { font-family: Consolas, monospace; overflow-wrap: anywhere; text-align: right; }
+#monitor-host-available { white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--accent, #74cbe5); }
+#monitor-host-available.host-full { color: var(--danger, #ff8383); }
+#monitor-host-storage p { color: var(--muted, #acb5c3); margin: 8px 0 0; font-size: 10px; line-height: 1.5; }

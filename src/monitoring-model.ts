@@ -7,10 +7,10 @@ export function filesystemUsage(fs: Filesystem): number | null {
 export function storageFilesystems(filesystems: Filesystem[]): Filesystem[] {
   const seen = new Set<string>();
   return filesystems
-    .filter(fs => fs.mount === '/' || (/^\/dev\//.test(fs.device) && !/^\/dev\/loop/.test(fs.device)) || /^[a-z]:/i.test(fs.device))
+    .filter(fs => fs.mount === '/' || (/^\/dev\//.test(fs.device) && !/^\/dev\/loop/.test(fs.device)))
     .filter(fs => fs.mount !== '/usr/lib/linux-tools' && !fs.mount.startsWith('/usr/lib/linux-tools/') && !fs.mount.startsWith('/usr/lib/wsl/') && !fs.mount.startsWith('/usr/src/linux-headers'))
     .sort((a, b) => Number(b.mount === '/') - Number(a.mount === '/') || a.mount.localeCompare(b.mount))
-    .filter(fs => { const device = /^[a-z]:/i.test(fs.device) ? fs.device.slice(0, 2).toUpperCase() : fs.device;
+    .filter(fs => { const device = fs.device;
       if (seen.has(device)) return false; seen.add(device); return true;
     });
 }
@@ -19,6 +19,7 @@ export type Snapshot = {
   swapTotal: number; swapFree: number; uptime: number; user: string; hostname: string; kernel: string;
   interface: string | null; received: number | null; transmitted: number | null;
   diskRead: number | null; diskWritten: number | null; filesystems: Filesystem[];
+  hostStorage?: { volume: string; available: number } | null;
 };
 export type Measurement = { at: number; cpu: number | null; memory: number; receive: number | null; transmit: number | null; read: number | null; write: number | null; space: number | null };
 export const HISTORY_MS = 5 * 60_000;

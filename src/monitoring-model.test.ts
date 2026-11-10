@@ -37,7 +37,7 @@ it('selects actual volumes once and uses df available-block semantics',()=>{
   {...root,device:'C:\\',mount:'/mnt/c'},
   {...root,device:'D:\\',mount:'/mnt/d'},
   {...root,device:'/dev/loop0',mount:'/snap/image'},
- ]).map(fs=>fs.mount)).toEqual(['/','/mnt/c','/mnt/d']);
+ ]).map(fs=>fs.mount)).toEqual(['/']);
  expect(filesystemUsage({...root,total:1007,used:106,available:851})).toBe(12);
  expect(filesystemUsage({...root,used:0,available:0})).toBeNull();
 });

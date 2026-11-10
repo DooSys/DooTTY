@@ -192,7 +192,7 @@ async fn monitoring_snapshot(
             .try_lock()
             .map_err(|_| "Monitoring query already running")?;
         let _query = WSL_QUERY_GATE.try_read().map_err(|_| "Monitoring paused")?;
-        dootty::monitor::collect(
+        let mut snapshot = dootty::monitor::collect(
             &profile,
             || {
                 session.is_alive()
@@ -201,7 +201,9 @@ async fn monitoring_snapshot(
                     && !platform::WSL_OPERATION_BUSY.load(Ordering::Acquire)
             },
             query_windows::query,
-        )
+        )?;
+        snapshot.host_storage = platform::vhd_host_storage(&profile.distribution);
+        Ok::<_, String>(snapshot)
     })
     .await
     .map_err(|e| e.to_string())?

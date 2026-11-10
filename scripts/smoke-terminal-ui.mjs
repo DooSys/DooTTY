@@ -26,6 +26,7 @@ try {
     window.isTauri = true;
     window.calls = [];
     window.sessions = {};
+    window.launchProfiles = {};
     window.next = 0;
     window.clipboardText = "example";
     let callback = 0;
@@ -58,6 +59,7 @@ try {
         if (command === "start_session") {
           const id = ++window.next;
           window.sessions[id] = args.output;
+          window.launchProfiles[id] = args.profile;
           args.output.onmessage({
             kind: "data",
             bytes: Array.from(
@@ -72,6 +74,10 @@ try {
           cpuTotal:1000,cpuIdle:500,memoryTotal:8*1024**3,memoryAvailable:5*1024**3,
           swapTotal:0,swapFree:0,uptime:100,user:"developer",hostname:"linux-host",kernel:"6.18.54.1-microsoft-standard-WSL2",
           interface:"eth0",received:0,transmitted:0,diskRead:0,diskWritten:0,
+          hostStorage: window.noHost ? null : {
+            volume: window.launchProfiles[args.sessionId]?.distribution==='Ubuntu' ? 'C:\\' : 'D:\\',
+            available: window.fullHost ? 0 : window.launchProfiles[args.sessionId]?.distribution==='Ubuntu' ? 20*1024**3 : 3*1024**3,
+          },
           filesystems:[
             {device:"/dev/sdb",mount:"/usr/lib/linux-tools/6.18.54.1-microsoft-standard-WSL2",total:100*1024**2,used:100*1024**2,available:0},
             {device:"/dev/sde",mount:"/data",total:100*1024**3,used:90*1024**3,available:10*1024**3},
@@ -138,16 +144,20 @@ try {
   await page.goto("http://127.0.0.1:1423");
   await page.locator('.session-tab[data-state="connected"]').waitFor();
   await page.locator("#monitor-toggle").click();
-  await page.waitForFunction(() => document.querySelectorAll(".monitor-filesystem").length === 5);
+  await page.waitForFunction(() => document.querySelectorAll(".monitor-filesystem").length === 3);
   assert.equal(await page.locator(".monitor-filesystem-heading strong").first().innerText(), "/");
   assert.equal(await page.locator(".monitor-filesystem-heading strong").last().innerText(), "/usr/lib/linux-tools-custom");
   assert.equal(await page.locator("#monitor-filesystems").innerText().then(text => text.includes("linux-tools/6.")), false);
-  assert.equal(await page.locator(".monitor-filesystem dl dd").count(), 15);
+  assert.equal(await page.locator(".monitor-filesystem dl dd").count(), 9);
   assert(await page.locator(".monitor-filesystem").first().evaluate(card =>
     Math.abs(card.querySelector("dt").getBoundingClientRect().left - card.querySelector("dd").getBoundingClientRect().left) < 1 && card.querySelector("dd").getBoundingClientRect().top > card.querySelector("dt").getBoundingClientRect().bottom,
   ));
   assert.equal(await page.locator(".monitor-filesystem-bar").nth(1).getAttribute("data-load"), "critical");
   assert.equal(await page.locator("#monitor-identity").innerText().then(text => text.match(/6\.18\.54\.1/g)?.length), 1);
+  assert.equal(await page.locator('#monitor-host-volume').innerText(), 'D:\\');
+  assert.equal(await page.locator('#monitor-host-available').innerText(), '3 Gio');
+  assert(await page.locator('.monitor-filesystem').first().innerText().then(text=>text.includes('Total virtuel') && text.includes('Libre virtuel')));
+  assert.equal(await page.locator('#monitor-filesystems').innerText().then(text=>text.includes('/mnt/c') || text.includes('/mnt/d')), false);
   const contextPrevented = selector => page.locator(selector).evaluate(element => {
     const event = new MouseEvent("contextmenu", {bubbles:true,cancelable:true});
     element.dispatchEvent(event);
@@ -487,6 +497,20 @@ try {
   await page.locator('#save-settings').click();
   await page.waitForFunction(()=>document.querySelector('#save-settings').disabled);
   assert.equal(await page.locator('#workflow-palette kbd').innerText(), 'Ctrl+Shift+P');
+  await palette('Ubuntu');
+  await page.locator('#command-results button').filter({hasText:'Ubuntu'}).click();
+  await page.waitForFunction(()=>document.querySelector('#monitor-host-volume').textContent==='C:\\');
+  assert.equal(await page.locator('#monitor-host-available').innerText(), '20 GiB');
+  await page.evaluate(()=>{window.noHost=true;});
+  await page.locator('#monitor-pause').click();
+  await page.locator('#monitor-pause').click();
+  await page.waitForFunction(()=>document.querySelector('#monitor-host-volume').textContent==='—');
+  assert.equal(await page.locator('#monitor-host-available').innerText(), 'Unavailable');
+  await page.evaluate(()=>{window.noHost=false;window.fullHost=true;});
+  await page.locator('#monitor-pause').click();
+  await page.locator('#monitor-pause').click();
+  await page.waitForFunction(()=>document.querySelector('#monitor-host-available').classList.contains('host-full'));
+  assert.match(await page.locator('#monitor-host-available').innerText(), /^0 /);
   assert.deepEqual(errors, []);
   console.log(
     "PASS: profile CRUD/default/persistence, modal combo, tab rename/duplicate, read-only input/paste blocking and live output/copy, editable full paste preview/cancel/confirm, settings save state, chrome context menus, storage cards, ConPTY cursor after clearing history, palette, export, clear and close-others confirmation.",
