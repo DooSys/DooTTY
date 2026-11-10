@@ -96,8 +96,10 @@ et E/S du disque racine correspondent à l'espace de montage de la distribution.
 Le monitoring n'attribue pas ces ressources à ses seuls processus et ne surveille
 pas les machines SSH distantes. L'utilisateur affiché est celui du profil de lancement.
 
-La section **Stockage Linux** présente `/` et les volumes de données Linux.
-Les montages techniques et les lecteurs Windows montés dans Linux sont écartés.
+La section **Stockage Linux** présente `/` et les volumes Linux locaux adossés
+à un périphérique de blocs (`/dev/...`). Les partages réseau (NFS, par exemple),
+les images `/dev/loop`, les montages techniques et les lecteurs Windows montés
+dans Linux sont écartés.
 Pour `/`, le total et le libre sont indiqués comme **virtuels** : ils décrivent
 le système de fichiers Linux, pas la capacité physique restante de Windows.
 
