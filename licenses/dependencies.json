@@ -1,8 +1,8 @@
 {
-  "version": "0.0.7",
+  "version": "0.0.8",
   "target": "x86_64-pc-windows-msvc",
-  "cargo_lock_sha256": "3fcbd8c8edb061aa963fa2ca49cbecad1b6474b9755b91eb2934fb1ff313edff",
-  "npm_lock_sha256": "0c38312c2ff61b76043cfd7a2bd543bca7ab366858a4fd6db41e7c3d6e8fd930",
+  "cargo_lock_sha256": "3b3e76804d48c9a2c612cf5636a6e068f6291dc0b2904603d999ded0c2481563",
+  "npm_lock_sha256": "60db04e7e8792645600524beb49be55f049d96d4daf06ee484e23f93d83d6aec",
   "packages": [
     {
       "name": "@tauri-apps/api",

@@ -1,8 +1,10 @@
 # Changements
 
-## Non publié
+## 0.0.8 — 2026-11-10
+
+- Affichage Windows multi-écrans : dernière ligne visible, marges et barres de défilement harmonisées.
 - Stockage centré sur Linux : capacité et libre virtuels explicités ; seul le volume Windows hébergeant le VHDX et son espace libre réel sont affichés en complément.
-- Revue finale : focus de la palette et des menus, collage édité transmis sans retraitement, fermeture des collages interrompus par la lecture seule, validation UTF-8 des profils et export des caractères larges corrigés.
+- Corrections : focus de la palette et des menus, collage édité transmis sans retraitement, fermeture des collages interrompus par la lecture seule, validation UTF-8 des profils et export des caractères larges corrigés.
 - Menu navigateur supprimé du clic droit sur l’interface, en conservant les menus utiles des terminaux, onglets et champs de texte.
 - Bouton Enregistrer actif uniquement lorsque les paramètres ont réellement changé, indépendamment de l’ordre des propriétés renvoyées par Rust.
 - Profils de lancement enregistrés et choix du profil d’ouverture.
