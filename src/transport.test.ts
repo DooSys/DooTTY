@@ -47,3 +47,31 @@ describe('terminal input transport', () => {
     expect(errors).toHaveLength(1);
   });
 });
+
+it('closes an interrupted bracketed paste without sending its remaining text', async () => {
+ let release!: () => void;
+ const chunks: number[][] = [];
+ const queue = new InputQueue(async bytes => {
+  chunks.push(bytes);
+  if(chunks.length===1) await new Promise<void>(resolve=>{release=resolve;});
+ }, error=>{throw error;});
+ queue.push(new TextEncoder().encode('\x1b[200~'+'x'.repeat(20000)+'\x1b[201~'));
+ const stopped=queue.cancel(true);
+ release();
+ await stopped;
+ expect(chunks).toHaveLength(2);
+ expect(new TextDecoder().decode(new Uint8Array(chunks[1]))).toBe('\x1b[201~');
+ expect(chunks[0].length).toBeLessThanOrEqual(8192);
+});
+it('never splits a paste delimiter across cancellable IPC messages', async () => {
+ const chunks: number[][] = [];
+ const queue=new InputQueue(async bytes=>{chunks.push(bytes);},error=>{throw error;});
+ const text='a'.repeat(8190)+'\x1b[200~'+'x'.repeat(8190)+'\x1b[201~';
+ queue.push(new TextEncoder().encode(text));
+ for(let i=0;i<10 && chunks.reduce((n,c)=>n+c.length,0)<text.length;i++) await tick();
+ expect(new TextDecoder().decode(new Uint8Array(chunks.flat()))).toBe(text);
+ for(const chunk of chunks) {
+  const s=new TextDecoder().decode(new Uint8Array(chunk));
+  expect(s).not.toMatch(/\x1b(?:\[(?:2(?:0(?:[01])?)?)?)?$/);
+ }
+});

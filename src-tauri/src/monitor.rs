@@ -53,6 +53,14 @@ pub struct Snapshot {
     pub disk_read: Option<u64>,
     pub disk_written: Option<u64>,
     pub filesystems: Vec<Filesystem>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub host_storage: Option<HostStorage>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct HostStorage {
+    pub volume: String,
+    pub available: u64,
 }
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -189,6 +197,7 @@ pub fn parse(text: &str) -> Result<Snapshot, String> {
         disk_read: disk.map(|n| n.0),
         disk_written: disk.map(|n| n.1),
         filesystems,
+        host_storage: None,
     })
 }
 
@@ -246,6 +255,45 @@ mod tests {
         assert!(snapshot.memory_total > 0);
         assert!(!snapshot.user.is_empty());
     }
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn probe_mount_selection_preserves_custom_volumes_without_internal_or_duplicate_mounts() {
+        use std::io::Write;
+        use std::process::{Command, Stdio};
+        let selection = PROBE
+            .split_once("\nawk '\n")
+            .unwrap()
+            .1
+            .split_once("' /proc/self/mountinfo")
+            .unwrap()
+            .0;
+        let mut child = Command::new("awk")
+            .arg(selection)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn()
+            .unwrap();
+        child
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(
+                br#"1 0 8:64 / / rw - ext4 /dev/sdd rw
+2 1 8:16 / /usr/lib/linux-tools/6.18 rw - ext4 /dev/sdb rw
+3 1 8:16 / /usr/src/linux-headers-6.18 rw - ext4 /dev/sdb rw
+4 1 8:32 / /usr/lib/linux-tools-custom rw - ext4 /dev/sdc rw
+5 1 0:2 / /mnt/c rw - 9p C:\ rw
+6 1 8:64 / /var/lib/docker rw - ext4 /dev/sdd rw
+"#,
+            )
+            .unwrap();
+        let output = child.wait_with_output().unwrap();
+        assert!(output.status.success());
+        assert_eq!(
+            String::from_utf8(output.stdout).unwrap(),
+            "/usr/lib/linux-tools-custom\n"
+        );
+    }
     #[test]
     fn parses_scope_counters_and_filesystems_without_double_counting_guest() {
         let probe = "@stat\ncpu 10 2 3 80 5 0 0 0 7 1\n@mem\nMemTotal: 1000 kB\nMemAvailable: 600 kB\n@uptime\n10.5 8\n@user\nuser\n@interface\neth0\n@net\neth0: 100 0 0 0 0 0 0 0 200 0\n@root\n8:32\n@disk\n8 32 sdc 1 0 4 0 2 0 6 0\n@df\nFilesystem 1024-blocks Used Available Capacity Mounted on\n/dev/sdc 100 25 70 26% /\n/dev/sdd 200 50 140 26% /a b\n";
@@ -258,6 +306,14 @@ mod tests {
         assert_eq!(s.disk_written, Some(3072));
         assert_eq!(s.filesystems[1].mount, "/a b");
         assert_eq!(s.filesystems[0].available, 71680);
+    }
+    #[test]
+    fn keeps_linux_storage_with_spaces_and_ignores_windows_drive_rows() {
+        let s = parse("@stat\ncpu 1 0 0 4\n@mem\nMemTotal: 10 kB\nMemFree: 5 kB\n@uptime\n3\n@df\nC:\\ 1000 800 180 82% /mnt/c\nD:\\ 2000 1500 400 79% /mnt/d\n/dev/sde 2000 1500 400 79% /data disk\n").unwrap();
+        assert_eq!(s.filesystems.len(), 1);
+        assert_eq!(s.filesystems[0].device, "/dev/sde");
+        assert_eq!(s.filesystems[0].mount, "/data disk");
+        assert_eq!(s.filesystems[0].used, 1500 * 1024);
     }
     #[test]
     fn missing_optional_counters_stay_unavailable_and_invalid_snapshots_fail() {

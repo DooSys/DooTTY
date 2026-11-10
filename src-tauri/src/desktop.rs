@@ -9,6 +9,9 @@ mod lifecycle_windows;
 mod platform;
 #[path = "query_windows.rs"]
 mod query_windows;
+#[cfg(test)]
+#[path = "terminal_layout_windows.rs"]
+mod terminal_layout_windows;
 #[path = "updates_windows.rs"]
 mod updates_windows;
 #[path = "window_bounds_windows.rs"]
@@ -73,6 +76,30 @@ async fn save_config(config: Config) -> Result<Config, String> {
         let _guard = WRITING.lock().map_err(|e| e.to_string())?;
         config.write(&config_path()?)?;
         Ok(config)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn export_terminal_text(window: tauri::WebviewWindow, text: String) -> Result<bool, String> {
+    static BUSY: AtomicBool = AtomicBool::new(false);
+    if text.len() > dootty::terminal_export::MAX_BYTES {
+        return Err("Export supérieur à 8 Mio.".into());
+    }
+    let parent = window.hwnd().map_err(|e| e.to_string())?.0 as isize;
+    if BUSY.swap(true, Ordering::AcqRel) {
+        return Err("Un export est déjà ouvert.".into());
+    }
+    struct BusyGuard;
+    impl Drop for BusyGuard {
+        fn drop(&mut self) {
+            BUSY.store(false, Ordering::Release);
+        }
+    }
+    tauri::async_runtime::spawn_blocking(move || {
+        let _guard = BusyGuard;
+        windows_util::export_terminal_text(parent, text)
     })
     .await
     .map_err(|e| e.to_string())?
@@ -165,7 +192,7 @@ async fn monitoring_snapshot(
             .try_lock()
             .map_err(|_| "Monitoring query already running")?;
         let _query = WSL_QUERY_GATE.try_read().map_err(|_| "Monitoring paused")?;
-        dootty::monitor::collect(
+        let mut snapshot = dootty::monitor::collect(
             &profile,
             || {
                 session.is_alive()
@@ -174,7 +201,9 @@ async fn monitoring_snapshot(
                     && !platform::WSL_OPERATION_BUSY.load(Ordering::Acquire)
             },
             query_windows::query,
-        )
+        )?;
+        snapshot.host_storage = platform::vhd_host_storage(&profile.distribution);
+        Ok::<_, String>(snapshot)
     })
     .await
     .map_err(|e| e.to_string())?
@@ -417,6 +446,7 @@ fn run_inner() -> Result<(), String> {
         .invoke_handler(tauri::generate_handler![
             session_config,
             save_config,
+            export_terminal_text,
             start_session,
             close_session,
             write_session,

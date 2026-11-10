@@ -28,9 +28,9 @@ environnement Linux sous Windows, avec ses distributions et ses outils au même 
 ## Fonctionnalités
 
 - **Vos distributions en onglets** : plusieurs terminaux indépendants, icônes
-  Linux, choix rapide de distribution et profils de lancement conservés par onglet.
+  Linux, profils enregistrés par utilisateur et dossier, renommage et duplication.
 - **Un terminal confortable** : copier/coller Windows ↔ Linux, recherche, zoom,
-  sélection rectangulaire et raccourcis clavier pour les actions courantes.
+  sélection rectangulaire, palette de commandes, export texte et lecture seule par onglet.
 - **Les ressources à portée de vue** : volet repliable suivant l’onglet actif,
   CPU, mémoire, réseau, activité disque, espace libre et graphes d’historique.
   Les couleurs signalent les fortes charges ; un raccourci ouvre le dossier du profil.

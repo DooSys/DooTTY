@@ -10,6 +10,9 @@ pub struct Config {
     pub distribution: String,
     pub username: Option<String>,
     pub directory: String,
+    pub profiles: Vec<SavedProfile>,
+    #[serde(rename = "defaultProfileId")]
+    pub default_profile_id: Option<String>,
     pub appearance: Appearance,
     pub interaction: Interaction,
     #[serde(rename = "wslSettingsPath")]
@@ -22,6 +25,25 @@ pub struct LaunchProfile {
     pub distribution: String,
     pub username: Option<String>,
     pub directory: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct SavedProfile {
+    pub id: String,
+    pub name: String,
+    pub distribution: String,
+    pub username: Option<String>,
+    pub directory: String,
+}
+impl SavedProfile {
+    pub fn launch(&self) -> LaunchProfile {
+        LaunchProfile {
+            distribution: self.distribution.clone(),
+            username: self.username.clone(),
+            directory: self.directory.clone(),
+        }
+    }
 }
 
 impl LaunchProfile {
@@ -89,6 +111,7 @@ pub struct Interaction {
     pub trim_paste_newlines: bool,
     pub rectangular_selection: bool,
     pub warn_on_close: bool,
+    pub warn_multiline_paste: bool,
 }
 impl Default for Interaction {
     fn default() -> Self {
@@ -100,6 +123,7 @@ impl Default for Interaction {
             trim_paste_newlines: false,
             rectangular_selection: false,
             warn_on_close: true,
+            warn_multiline_paste: false,
         }
     }
 }
@@ -112,6 +136,8 @@ impl Default for Config {
             distribution: "Debian".into(),
             username: None,
             directory: "~".into(),
+            profiles: Vec::new(),
+            default_profile_id: None,
             appearance: Appearance::default(),
             interaction: Interaction::default(),
             wsl_settings_path: r"C:\Program Files\WSL\wslsettings\wslsettings.exe".into(),
@@ -142,6 +168,47 @@ impl Config {
     }
 
     pub fn validate(&self) -> Result<(), String> {
+        LaunchProfile {
+            distribution: self.distribution.clone(),
+            username: self.username.clone(),
+            directory: self.directory.clone(),
+        }
+        .validate()?;
+        if self.profiles.len() > 32 {
+            return Err("32 profils maximum.".into());
+        }
+        let mut ids = std::collections::HashSet::new();
+        for profile in &self.profiles {
+            if profile.id.is_empty()
+                || profile.id.len() > 64
+                || !profile
+                    .id
+                    .bytes()
+                    .all(|c| c.is_ascii_alphanumeric() || matches!(c, b'-' | b'_'))
+                || !ids.insert(&profile.id)
+                || profile.name.trim().is_empty()
+                || profile.name.chars().count() > 80
+                || profile.name.chars().any(char::is_control)
+            {
+                return Err("Profil enregistré invalide.".into());
+            }
+            profile.launch().validate()?;
+        }
+        if self
+            .default_profile_id
+            .as_ref()
+            .is_some_and(|id| !ids.contains(id))
+        {
+            return Err("Profil par défaut introuvable.".into());
+        }
+        if serde_json::to_vec_pretty(self)
+            .map_err(|e| e.to_string())?
+            .len()
+            + 1
+            > 65536
+        {
+            return Err("Le fichier de configuration dépasse 64 Kio.".into());
+        }
         self.launch_profile().validate()?;
         // Allow community locales without requiring a native-code change.
         if self.language.is_empty()
@@ -219,6 +286,13 @@ impl Config {
     }
 
     pub fn launch_profile(&self) -> LaunchProfile {
+        if let Some(profile) = self
+            .profiles
+            .iter()
+            .find(|p| Some(&p.id) == self.default_profile_id.as_ref())
+        {
+            return profile.launch();
+        }
         LaunchProfile {
             distribution: self.distribution.clone(),
             username: self.username.clone(),
@@ -404,5 +478,62 @@ mod tests {
         assert!(config.write(&path).is_err());
         assert_eq!(Config::read(&path).unwrap().appearance.font_size, 18);
         std::fs::remove_dir_all(root).unwrap();
+    }
+}
+
+#[cfg(test)]
+mod saved_profile_tests {
+    use super::*;
+    fn profile() -> SavedProfile {
+        SavedProfile {
+            id: "work".into(),
+            name: "Work".into(),
+            distribution: "Debian".into(),
+            username: Some("developer".into()),
+            directory: "/home/developer/work".into(),
+        }
+    }
+    #[test]
+    fn old_config_migrates_and_selected_profile_supplies_separate_arguments() {
+        let mut config: Config = serde_json::from_str("{}").unwrap();
+        assert!(config.profiles.is_empty());
+        assert_eq!(config.default_profile_id, None);
+        assert!(!config.interaction.warn_multiline_paste);
+        config.profiles.push(profile());
+        config.default_profile_id = Some("work".into());
+        config.validate().unwrap();
+        assert_eq!(
+            config.launch_profile().args(),
+            [
+                "--distribution",
+                "Debian",
+                "--user",
+                "developer",
+                "--cd",
+                "/home/developer/work"
+            ]
+        );
+        let restored: Config =
+            serde_json::from_slice(&serde_json::to_vec(&config).unwrap()).unwrap();
+        assert_eq!(restored, config);
+    }
+    #[test]
+    fn rejects_duplicate_ids_missing_defaults_and_oversized_serialized_configs() {
+        let mut config = Config::default();
+        config.default_profile_id = Some("missing".into());
+        assert!(config.validate().is_err());
+        config.default_profile_id = None;
+        config.profiles = vec![profile(), profile()];
+        assert!(config.validate().is_err());
+        config.profiles = (0..32)
+            .map(|i| SavedProfile {
+                id: format!("p{i}"),
+                distribution: "d".repeat(1024),
+                username: Some("u".repeat(1024)),
+                directory: "/".repeat(1024),
+                ..profile()
+            })
+            .collect();
+        assert!(config.validate().unwrap_err().contains("64 Kio"));
     }
 }

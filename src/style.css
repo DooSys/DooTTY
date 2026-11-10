@@ -1,5 +1,8 @@
 @import "@xterm/xterm/css/xterm.css";
 :root {
+  --scrollbar-thumb: #737c88;
+  --scrollbar-hover: #a0aab6;
+  --scrollbar-active: #bdc6d0;
   font-family: "Segoe UI", sans-serif;
   color: var(--text, #ededed);
   background: var(--canvas, #0c0c0c);
@@ -18,9 +21,11 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  border-bottom: 1px solid var(--border, #414141);
 }
 button,
 input,
+textarea,
 select {
   font: inherit;
 }
@@ -37,6 +42,7 @@ button:hover {
 }
 button:focus-visible,
 input:focus-visible,
+textarea:focus-visible,
 select:focus-visible,
 summary:focus-visible {
   outline: 2px solid var(--accent, #60cdff);
@@ -47,6 +53,7 @@ button:disabled {
   cursor: default;
 }
 input,
+textarea,
 select {
   background: var(--field, #3a3a3a);
   color: var(--text, #f5f5f5);
@@ -203,11 +210,55 @@ kbd {
   height: 100%;
 }
 .terminal-pane {
-  padding: 8px 6px 4px 8px;
   background: var(--terminal-background, var(--canvas, #0c0c0c));
+}
+.terminal-pane > .xterm {
+  /* FitAddon subtracts xterm's padding, not its parent's padding. */
+  padding: 8px 6px 4px 8px;
 }
 .xterm {
   height: 100%;
+}
+/* xterm 6 scrolls through its scrollable element. The legacy viewport is
+   retained for layout/overview rendering and must not paint a second scrollbar. */
+.terminal-pane .xterm-viewport {
+  background-color: var(--terminal-background, var(--canvas, #0c0c0c));
+  overflow: hidden;
+}
+/* Same 14px track and 6px rounded thumb on monitoring and terminal history. */
+#monitoring {
+  scrollbar-width: auto;
+  scrollbar-color: auto;
+}
+#monitoring::-webkit-scrollbar {
+  width: 14px;
+  height: 14px;
+}
+#monitoring::-webkit-scrollbar-track {
+  background: transparent;
+}
+#monitoring::-webkit-scrollbar-thumb,
+.terminal-pane .xterm .xterm-scrollable-element > .scrollbar.vertical > .slider {
+  background-color: var(--scrollbar-thumb);
+  background-clip: padding-box;
+  border: 4px solid transparent;
+  border-radius: 8px;
+}
+#monitoring::-webkit-scrollbar-thumb {
+  min-height: 32px;
+}
+#monitoring::-webkit-scrollbar-thumb:hover,
+.terminal-pane .xterm .xterm-scrollable-element > .scrollbar.vertical > .slider:hover {
+  background-color: var(--scrollbar-hover);
+}
+#monitoring::-webkit-scrollbar-thumb:active,
+.terminal-pane .xterm .xterm-scrollable-element > .scrollbar.vertical > .slider.active {
+  background-color: var(--scrollbar-active);
+}
+#monitoring::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
 }
 #notice {
   display: flex;
@@ -897,7 +948,7 @@ dialog > div {
 #workspace { display: flex; }
 #terminal-panes { flex: 1; }
 #settings, #empty-state { width: 100%; }
-#monitoring { flex: 0 0 56px; width: 56px; overflow-y: auto; overflow-x: hidden; background: var(--panel, #1c1e22); border-right: 1px solid var(--border, #35383d); padding: 8px 4px; scrollbar-width: thin; }
+#monitoring { flex: 0 0 56px; width: 56px; overflow-y: auto; overflow-x: hidden; background: var(--panel, #1c1e22); border-right: 1px solid var(--border, #35383d); padding: 8px 4px; }
 #monitoring.expanded { flex-basis: 292px; width: 292px; padding: 14px; }
 .monitor-top { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
 #monitoring.expanded .monitor-top { flex-direction: row; justify-content: flex-start; gap: 9px; }
@@ -921,9 +972,22 @@ dialog > div {
 #monitoring .hint { font-size: 11px; line-height: 1.6; }
 #monitoring.stale .monitor-metric-heading strong { color: var(--subtle, #8b929d); }
 #monitor-pause { display: flex; align-items: center; justify-content: center; height: 36px; padding: 6px; width: 100%; color: var(--muted, #b0c0ce); margin: 14px 0 0; border: 1px solid var(--border, #363c45); }
-.monitor-filesystem { padding: 9px 0; border-bottom: 1px solid var(--border, #343941); overflow-wrap: anywhere; }
-.monitor-filesystem strong, .monitor-filesystem small { display: block; margin: 4px 0; }
-.monitor-filesystem small { color: var(--muted, #acb5c3); font-size: 11px; line-height: 1.5; }
+#monitor-more { border-top: 1px solid var(--border, #343941); padding-top: 14px; }
+#monitor-more h3 { margin: 0 0 12px; font-size: 12px; font-weight: 600; }
+#monitor-filesystems { display: grid; gap: 10px; }
+.monitor-filesystem { padding: 12px; min-width: 0; border: 1px solid var(--border, #343941); border-radius: 6px; background: var(--surface, #22252a); }
+.monitor-filesystem-heading { display: flex; align-items: flex-start; gap: 7px; }
+.monitor-filesystem-heading svg { width: 17px; height: 17px; flex-shrink: 0; color: var(--accent, #74cbe5); }
+.monitor-filesystem-heading strong { flex: 1; min-width: 0; font-size: 12px; font-weight: 600; overflow-wrap: anywhere; }
+.monitor-filesystem-heading > span { font: 600 11px Consolas, monospace; white-space: nowrap; }
+.monitor-filesystem-device { display: block; margin-top: 5px; color: var(--muted, #acb5c3); font: 10px/1.5 Consolas, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.monitor-filesystem-bar { height: 4px; margin: 12px 0; border-radius: 3px; overflow: hidden; background: var(--border, #343941); }
+.monitor-filesystem-bar span { display: block; height: 100%; border-radius: inherit; background: var(--accent, #74cbe5); }
+.monitor-filesystem-bar[data-load="high"] span { background: var(--warning, #f4c36b); }
+.monitor-filesystem-bar[data-load="critical"] span { background: var(--danger, #ff8383); }
+.monitor-filesystem dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 8px; margin: 0; font-size: 11px; line-height: 1.5; }
+.monitor-filesystem dt { grid-row: 1; margin: 0; color: var(--muted, #acb5c3); }
+.monitor-filesystem dd { grid-row: 2; margin: 0; text-align: left; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .icon-button { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; padding: 7px; flex-shrink: 0; }
 .icon-button svg, .icon-button img { width: 20px; height: 20px; }
 .icon-button svg { fill: none; stroke: currentColor; stroke-width: 1.5; }
@@ -962,6 +1026,9 @@ dialog > div {
 
 /* App chrome and terminal use the same soft gray/blue direction in light mode. */
 :root[data-theme="light"] {
+  --scrollbar-thumb: #8d9bab;
+  --scrollbar-hover: #64778c;
+  --scrollbar-active: #465d77;
   color-scheme: light;
   --canvas: #eef2f6;
   --panel: #e4ebf2;
@@ -1006,3 +1073,44 @@ dialog > div {
 #wsl-operation-output { margin-top: 24px; }
 
 .management-heading + .wsl-update-card { margin-top: 8px; }
+
+/* Terminal workflow controls share the application's existing theme. */
+.workflow-popup { position: fixed; z-index: 1200; min-width: 255px; max-width: calc(100vw - 8px); padding: 5px; background: var(--panel, #292929); color: var(--text, #ededed); border: 1px solid var(--border, #414141); border-radius: 8px; box-shadow: 0 8px 28px #0005; }
+.workflow-popup button { display: block; width: 100%; text-align: left; padding: 9px 12px; }
+.workflow-dialog { max-width: 540px; width: min(540px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; }
+.workflow-dialog h2 { margin-top: 0; }
+.workflow-dialog p { color: var(--muted, #bbb); line-height: 1.5; }
+.workflow-dialog input { width: 100%; }
+.workflow-dialog label { display: grid; gap: 7px; margin: 15px 0; }
+.workflow-dialog pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 240px; overflow: auto; user-select: text; padding: 12px; border-radius: 5px; background: var(--canvas, #0c0c0c); }
+.palette-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+#command-results { max-height: 360px; overflow: auto; margin-top: 10px; }
+#command-results button { display: block; width: 100%; text-align: left; }
+#command-results button[aria-selected="true"] { background: var(--selected, #344353); }
+.profile-card > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.profile-actions { display: flex; gap: 4px; flex-shrink: 0; }
+#saved-profile-menu:empty { display: none; }
+#saved-profile-menu:not(:empty) { border-bottom: 1px solid var(--border, #414141); margin-bottom: 5px; padding-bottom: 5px; }
+.workflow-dialog > .select-popup, #command-results { display: block; }
+.session-tab.read-only .tab-title::before { content: ''; display: inline-block; width: 12px; height: 12px; margin-right: 5px; background-color: var(--accent, #60cdff); mask: url('/assets/icons/lock.svg') center / contain no-repeat; }
+
+#paste-dialog { width: min(760px, calc(100vw - 32px)); max-width: 760px; }
+#paste-preview {
+  display: block;
+  width: 100%;
+  min-height: 160px;
+  max-height: 45vh;
+  resize: vertical;
+  font-family: "Cascadia Mono", Consolas, monospace;
+  line-height: 1.5;
+  tab-size: 4;
+  user-select: text;
+}
+
+#monitor-host-storage { border-top: 1px solid var(--border, #343941); margin-top: 14px; padding-top: 12px; font-size: 11px; }
+.monitor-host-heading, .monitor-host-free { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin: 7px 0; }
+.monitor-host-heading { color: var(--muted, #acb5c3); }
+#monitor-host-volume { font-family: Consolas, monospace; overflow-wrap: anywhere; text-align: right; }
+#monitor-host-available { white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--accent, #74cbe5); }
+#monitor-host-available.host-full { color: var(--danger, #ff8383); }
+#monitor-host-storage p { color: var(--muted, #acb5c3); margin: 8px 0 0; font-size: 10px; line-height: 1.5; }

@@ -23,6 +23,15 @@ fn customized() -> Config {
     config.interaction.trim_paste_newlines = true;
     config.interaction.rectangular_selection = true;
     config.interaction.warn_on_close = false;
+    config.interaction.warn_multiline_paste = true;
+    config.profiles.push(dootty::config::SavedProfile {
+        id: "work".into(),
+        name: "Work".into(),
+        distribution: "Debian".into(),
+        username: Some("developer".into()),
+        directory: "/home/developer/work".into(),
+    });
+    config.default_profile_id = Some("work".into());
     config.wsl_settings_path = r"D:\Apps\WSL\wslsettings.exe".into();
     config
 }

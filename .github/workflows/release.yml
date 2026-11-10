@@ -39,6 +39,8 @@ jobs:
         run: cargo test --locked --manifest-path src-tauri/Cargo.toml
       - name: Build DooTTY.exe
         run: npm run build:windows
+      - name: Terminal UI regression tests
+        run: npm run test:ui
       - name: Install NSIS 3.11
         run: choco upgrade nsis.install --version=3.11.0 --allow-downgrade --yes --no-progress
       - name: Build installer

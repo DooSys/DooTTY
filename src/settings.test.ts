@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { defaults, themes, terminalTheme, formatBytes, createProfile } from "./settings";
+import { defaults, sameConfig, themes, terminalTheme, formatBytes, createProfile } from "./settings";
 it("distinguishes missing disk metadata, zero size and large files", () => {
   expect(formatBytes(null)).toContain("inaccessible");
   expect(formatBytes(0)).toBe("0 octets");
@@ -60,4 +60,43 @@ it("keeps every console palette independent of the app theme", () => {
     }
   }
   expect(terminalTheme({ theme: "unknown" })).toBe(themes.campbell);
+});
+
+it("launches a saved default profile without leaking its metadata into WSL arguments", () => {
+  const config = structuredClone(defaults);
+  config.profiles=[{id:"work",name:"Work",distribution:"Ubuntu",username:"developer",directory:"/home/developer/project one"}];
+  config.defaultProfileId="work";
+  expect(createProfile(config)).toEqual({distribution:"Ubuntu",username:"developer",directory:"/home/developer/project one"});
+  expect(createProfile(config,"Debian")).toEqual({distribution:"Debian",username:null,directory:"~"});
+  config.defaultProfileId=null;
+  expect(createProfile(config).distribution).toBe("Debian");
+});
+
+it("compares settings by value regardless of IPC object key order", () => {
+  const config = structuredClone(defaults);
+  config.profiles = [{id: "work", name: "Work", distribution: "Debian", username: null, directory: "~"}];
+  const reordered = JSON.parse(JSON.stringify(config, (_key, value) =>
+    value !== null && typeof value === "object" && !Array.isArray(value)
+      ? Object.fromEntries(Object.entries(value).reverse())
+      : value,
+  ));
+  expect(JSON.stringify(reordered)).not.toBe(JSON.stringify(config));
+  expect(sameConfig(config, reordered)).toBe(true);
+  reordered.profiles[0].directory = "/tmp";
+  expect(sameConfig(config, reordered)).toBe(false);
+});
+
+it("detects reverted values and preserves the significance of profile order", () => {
+  const config = structuredClone(defaults);
+  const draft = structuredClone(config);
+  draft.interaction.warnMultilinePaste = !config.interaction.warnMultilinePaste;
+  expect(sameConfig(config, draft)).toBe(false);
+  draft.interaction.warnMultilinePaste = config.interaction.warnMultilinePaste;
+  expect(sameConfig(config, draft)).toBe(true);
+  config.profiles = [
+    {id: "one", name: "One", distribution: "Debian", username: null, directory: "~"},
+    {id: "two", name: "Two", distribution: "Debian", username: null, directory: "/tmp"},
+  ];
+  draft.profiles = [...config.profiles].reverse();
+  expect(sameConfig(config, draft)).toBe(false);
 });

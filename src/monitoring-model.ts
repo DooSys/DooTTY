@@ -1,9 +1,25 @@
 export type Filesystem = { device: string; mount: string; total: number; used: number; available: number };
+/** Match df's Use%: unprivileged available space excludes reserved blocks. */
+export function filesystemUsage(fs: Filesystem): number | null {
+  const capacity = fs.used + fs.available;
+  return capacity > 0 ? Math.max(0, Math.min(100, Math.ceil(fs.used / capacity * 100))) : null;
+}
+export function storageFilesystems(filesystems: Filesystem[]): Filesystem[] {
+  const seen = new Set<string>();
+  return filesystems
+    .filter(fs => fs.mount === '/' || (/^\/dev\//.test(fs.device) && !/^\/dev\/loop/.test(fs.device)))
+    .filter(fs => fs.mount !== '/usr/lib/linux-tools' && !fs.mount.startsWith('/usr/lib/linux-tools/') && !fs.mount.startsWith('/usr/lib/wsl/') && !fs.mount.startsWith('/usr/src/linux-headers'))
+    .sort((a, b) => Number(b.mount === '/') - Number(a.mount === '/') || a.mount.localeCompare(b.mount))
+    .filter(fs => { const device = fs.device;
+      if (seen.has(device)) return false; seen.add(device); return true;
+    });
+}
 export type Snapshot = {
   cpuTotal: number; cpuIdle: number; memoryTotal: number; memoryAvailable: number;
   swapTotal: number; swapFree: number; uptime: number; user: string; hostname: string; kernel: string;
   interface: string | null; received: number | null; transmitted: number | null;
   diskRead: number | null; diskWritten: number | null; filesystems: Filesystem[];
+  hostStorage?: { volume: string; available: number } | null;
 };
 export type Measurement = { at: number; cpu: number | null; memory: number; receive: number | null; transmit: number | null; read: number | null; write: number | null; space: number | null };
 export const HISTORY_MS = 5 * 60_000;
@@ -20,7 +36,7 @@ export function measure(snapshot: Snapshot, previous: Snapshot | undefined, at: 
     receive: snapshot.interface === previous?.interface ? rate(snapshot.received, previous?.received) : null,
     transmit: snapshot.interface === previous?.interface ? rate(snapshot.transmitted, previous?.transmitted) : null,
     read: rate(snapshot.diskRead, previous?.diskRead), write: rate(snapshot.diskWritten, previous?.diskWritten),
-    space: root && root.total > 0 ? root.used / root.total * 100 : null,
+    space: root ? filesystemUsage(root) : null,
   };
 }
 export function retainHistory(history: Measurement[], point: Measurement): Measurement[] {

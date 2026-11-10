@@ -1,7 +1,19 @@
 # Changements
 
-## 0.0.7
+## Non publié
+- Stockage centré sur Linux : capacité et libre virtuels explicités ; seul le volume Windows hébergeant le VHDX et son espace libre réel sont affichés en complément.
+- Revue finale : focus de la palette et des menus, collage édité transmis sans retraitement, fermeture des collages interrompus par la lecture seule, validation UTF-8 des profils et export des caractères larges corrigés.
+- Menu navigateur supprimé du clic droit sur l’interface, en conservant les menus utiles des terminaux, onglets et champs de texte.
+- Bouton Enregistrer actif uniquement lorsque les paramètres ont réellement changé, indépendamment de l’ordre des propriétés renvoyées par Rust.
+- Profils de lancement enregistrés et choix du profil d’ouverture.
+- Menu contextuel des onglets : renommage, duplication et fermeture des autres terminaux.
+- Palette de commandes accessible avec Ctrl+Maj+P.
+- Effacement de l’historique sans déplacer le curseur ConPTY, et export du buffer actif en texte UTF-8.
+- Confirmation facultative du collage multiligne avec texte modifiable avant envoi.
+- Lecture seule par onglet, sans interrompre la réception des sorties.
+- Tests de l’interface de production ajoutés aux workflows Windows et de release.
 
+## 0.0.7
 - Lecture UTF-8 explicite des sources NSIS pour préserver les accents de l’installeur Windows.
 - Fenêtre agrandie limitée à la zone de travail de l’écran, au-dessus de la barre des tâches.
 - Détection des liens HTTP(S) du terminal et ouverture par Ctrl+clic dans le navigateur par défaut, y compris les liens OSC 8.
@@ -10,10 +22,8 @@
 - Configuration CodeRabbit adaptée au projet et raccourci des liens ajouté au guide d’utilisation.
 
 ## 0.0.6
-
 - Titre de distribution conservé pendant le titre Windows provisoire, sans attente ajoutée.
 - Notices tierces dédupliquées et regroupées dans une livraison de trois fichiers légaux.
-
 - Un seul installeur Windows avec installation par utilisateur ou extraction portable.
 - Préférences et cache isolés dans `data` en mode portable.
 - Mise à jour par relance de l’installeur, fermeture normale et conservation des réglages.
@@ -28,7 +38,6 @@
 - Thème de l’interface indépendant des palettes du terminal.
 
 ## 0.0.5 — Bêta
-
 - Terminal Windows natif pour les distributions WSL existantes, onglets et profils de lancement.
 - Interface français/anglais, réglages persistants et cinq palettes.
 - Copie/collage, sélection rectangulaire, recherche et confirmations de fermeture.
