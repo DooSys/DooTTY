@@ -1080,6 +1080,27 @@ dialog > div {
 .workflow-dialog { max-width: 540px; width: min(540px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; }
 .workflow-dialog h2 { margin-top: 0; }
 .workflow-dialog p { color: var(--muted, #bbb); line-height: 1.5; }
+/* Actions sit inside a form; the generic dialog > div rule does not reach them. */
+.workflow-dialog .dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 20px;
+}
+.workflow-dialog .dialog-actions button {
+  min-width: 88px;
+  min-height: 36px;
+  padding: 8px 16px;
+}
+.workflow-dialog .dialog-actions button[value="cancel"] {
+  background: var(--surface, #323232);
+  border-color: var(--border, #444);
+}
+.workflow-dialog .dialog-actions button[value="cancel"]:hover {
+  background: var(--border, #424242);
+}
 .workflow-dialog input { width: 100%; }
 .workflow-dialog label { display: grid; gap: 7px; margin: 15px 0; }
 .workflow-dialog pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 240px; overflow: auto; user-select: text; padding: 12px; border-radius: 5px; background: var(--canvas, #0c0c0c); }
