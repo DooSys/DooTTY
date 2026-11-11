@@ -238,12 +238,13 @@
     "connected": "WSL session connected",
     "ended": "Session ended",
     "connectionFailed": "Connection failed",
-    "unexpectedExit": "WSL exited with an error. The diagnostic remains in this tab.",
     "stillConnecting": "A terminal is still connecting. Restart it after it disconnects.",
     "restartFailed": "Failed to restart the {{distribution}} terminal.",
     "limit": "Cannot open another terminal (32-tab limit).",
     "preview": "DooTTY — browser preview",
-    "previewHint": "Run DooTTY.exe on Windows to open WSL."
+    "previewHint": "Run DooTTY.exe on Windows to open WSL.",
+    "recoveryMessage": "This session has ended or was interrupted. Its contents remain available.",
+    "openReplacement": "Open a new console"
   },
   "select": {
     "choose": "Choose"

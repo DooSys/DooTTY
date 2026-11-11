@@ -61,6 +61,7 @@ function activeTerminal(): TerminalTab | undefined {
 }
 function updateActions(): void {
   workflow?.refresh();
+  for (const tab of tabs) tab.renderRecovery();
   monitoring?.sync();
   const tab = activeTerminal();
   for (const id of ["copy", "paste", "select-all", "search-toggle"])
@@ -167,6 +168,13 @@ class TerminalTab {
   readonly fit = new FitAddon();
   search = new SearchAddon();
   readonly pane = document.createElement("div");
+  readonly screen = document.createElement("div");
+  readonly recovery = document.createElement("div");
+  private readonly recoveryText = document.createElement("span");
+  private readonly recoveryDetail = document.createElement("small");
+  private readonly reopenButton = document.createElement("button");
+  private recoveryReason: string | null = null;
+  lastSessionId: number | null = null;
   readonly button: HTMLDivElement;
   readonly select: HTMLButtonElement;
   readonly title: HTMLSpanElement;
@@ -208,7 +216,15 @@ class TerminalTab {
       if (native) run(invoke("open_external_url", { url: uri }));
     }, () => t("terminal.openLinkHint"));
     el("terminal-panes").append(this.pane);
-    this.terminal.open(this.pane);
+    this.screen.className = "terminal-screen";
+    this.recovery.className = "session-recovery";
+    this.recovery.setAttribute("role", "status");
+    this.recovery.hidden = true;
+    this.reopenButton.type = "button";
+    this.reopenButton.onclick = () => newTab(undefined, true, structuredClone(this.profile), this.customTitle ?? undefined);
+    this.recovery.append(this.recoveryText, this.recoveryDetail, this.reopenButton);
+    this.pane.append(this.recovery, this.screen);
+    this.terminal.open(this.screen);
     installRectangularSelection(this.pane, () => this.rectangularSelection, () => this.terminal.modes.mouseTrackingMode !== "none");
     this.pane.addEventListener("copy", event => {
       if (!this.terminal.hasSelection() || !event.clipboardData) return;
@@ -268,6 +284,41 @@ class TerminalTab {
       true,
     );
   }
+  renderRecovery(): void {
+    this.recovery.hidden = this.recoveryReason === null;
+    if (this.recoveryReason === null) return;
+    this.recoveryText.textContent = t("tabs.recoveryMessage");
+    this.recoveryDetail.textContent = this.recoveryReason;
+    this.reopenButton.textContent = t("tabs.openReplacement");
+    this.reopenButton.disabled = !booted || tabs.length >= 32;
+  }
+  private ended(reason: string, failed: boolean): void {
+    this.input?.cancel();
+    this.input = null;
+    this.inputRevision++;
+    this.sessionId = null;
+    this.pendingSize = null;
+    this.recoveryReason = reason;
+    this.terminal.options.disableStdin = true;
+    this.button.dataset.state = failed ? "error" : "exited";
+    this.select.title = t("tabs.ended");
+    delete this.select.dataset.i18nTitle;
+    updateActions();
+    requestAnimationFrame(() => this.resize());
+  }
+  interrupt(id: number, reason: unknown): void {
+    if (this.closed || this.sessionId !== id || this.expectedStop) return;
+    if (this.output) this.output.onmessage = () => {};
+    this.output = null;
+    this.ended(String(reason), true);
+    // Release this stale PTY only. Never stop or restart the distribution.
+    run(invoke("close_session", { sessionId: id }));
+  }
+  private async sendInput(id: number, bytes: number[]): Promise<void> {
+    if (this.closed || this.sessionId !== id) return;
+    try { await invoke("write_session", { sessionId: id, bytes }); }
+    catch (error) { this.interrupt(id, error); throw error; }
+  }
   updateTitle(): void {
     this.title.textContent = this.customTitle || this.shellTitle || this.profile.distribution;
     if (this.customTitle) this.title.dataset.customName = this.customTitle;
@@ -294,13 +345,13 @@ class TerminalTab {
   rename(name: string): void { this.customTitle = name.slice(0,80) || null; this.updateTitle(); }
   setReadOnly(value: boolean): void {
     this.readOnly = value;
-    this.terminal.options.disableStdin = value;
+    this.terminal.options.disableStdin = value || this.sessionId === null;
     if (this.input) this.inputCleanup = this.input.cancel(true);
     this.input = null;
     const id = this.sessionId, revision = ++this.inputRevision;
     if (!value && id !== null) void this.inputCleanup.then(() => {
       if (!this.closed && !this.readOnly && this.sessionId === id && this.inputRevision === revision)
-        this.input = new InputQueue(bytes => this.closed || this.sessionId !== id ? Promise.resolve() : invoke("write_session",{sessionId:id,bytes}), showError);
+        this.input = new InputQueue(bytes => this.sendInput(id, bytes), showError);
     });
     this.button.classList.toggle("read-only",value); this.updateTitle(); updateActions();
   }
@@ -358,6 +409,8 @@ class TerminalTab {
   async start(): Promise<void> {
     if (this.connecting || this.sessionId !== null || this.closed) return;
     this.expectedStop = false;
+    this.recoveryReason = null;
+    this.lastSessionId = null;
     this.hasShellTitle = false;
     this.connecting = true;
     const generation = ++this.generation;
@@ -404,18 +457,10 @@ class TerminalTab {
         channel.onmessage = () => {};
         this.output = null;
         exited = true;
-        this.input?.cancel();
-        this.sessionId = null;
-        this.button.dataset.state =
-          !this.expectedStop && (event.error || event.code) ? "error" : "exited";
-        this.select.title = `${t("tabs.ended")}${event.code === null ? "" : ` · ${event.code}`}`;
-        delete this.select.dataset.i18nTitle;
-        if (!this.expectedStop && event.error) showError(event.error);
-        else if (!this.expectedStop && event.code)
-          showError(
-            t("tabs.unexpectedExit"),
-          );
-        updateActions();
+        this.ended(
+          event.error ?? `${t("tabs.ended")}${event.code === null ? "" : ` · ${event.code}`}`,
+          !this.expectedStop && !!(event.error || event.code),
+        );
       }
     };
     try {
@@ -430,10 +475,12 @@ class TerminalTab {
         await invoke("close_session", { sessionId: id });
         return;
       }
+      this.lastSessionId = id;
       if (!exited) {
         this.sessionId = id;
+        this.terminal.options.disableStdin = this.readOnly;
         this.input = new InputQueue(
-          (bytes) => this.closed || this.sessionId !== id ? Promise.resolve() : invoke("write_session", { sessionId: id, bytes }),
+          (bytes) => this.sendInput(id, bytes),
           showError,
         );
         this.button.dataset.state = "connected";
@@ -448,6 +495,8 @@ class TerminalTab {
         this.button.dataset.state = "error";
         this.select.title = t("tabs.connectionFailed");
         this.select.dataset.i18nTitle = "tabs.connectionFailed";
+        this.recoveryReason = String(error);
+        this.terminal.options.disableStdin = true;
         showError(error);
       }
     } finally {
@@ -1112,9 +1161,11 @@ const wslManagement = initializeWslManagement({
 monitoring = initializeMonitoring({
   native,
   error: showError,
+  stopped: id => tabs.find(tab => tab.sessionId === id)?.interrupt(id, t("monitor.stopped")),
   target: () => {
     const tab = config.monitoringEnabled ? activeTerminal() : undefined;
-    return tab?.sessionId != null && !tab.closed && !tab.expectedStop ? { sessionId: tab.sessionId, distribution: tab.profile.distribution, username: tab.profile.username } : null;
+    const id = tab?.sessionId ?? tab?.lastSessionId;
+    return tab && id != null && !tab.closed && !tab.expectedStop ? { sessionId: id, distribution: tab.profile.distribution, username: tab.profile.username, inactive: tab.sessionId === null } : null;
   },
   resize: () => requestAnimationFrame(() => activeTerminal()?.resize()),
 });
@@ -1223,6 +1274,7 @@ onLanguageChanged(() => {
   }
   for (const tab of tabs) {
     tab.updateTitle();
+    tab.renderRecovery();
     tab.button.querySelector(".tab-close")!.setAttribute("aria-label", t("tabs.close", { title: tab.title.textContent }));
     if (tab.button.dataset.state === "connecting") tab.select.title = t("tabs.connecting");
     else if (tab.button.dataset.state === "error") tab.select.title = t("tabs.connectionFailed");

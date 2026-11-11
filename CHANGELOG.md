@@ -1,5 +1,9 @@
 # Changements
 
+## Non publié
+
+- Sessions WSL interrompues : bandeau persistant avec ouverture d’une nouvelle console du même profil, conservation du contenu et du dernier relevé de monitoring.
+
 ## 0.0.8 — 2026-11-10
 
 - Affichage Windows multi-écrans : dernière ligne visible, marges et barres de défilement harmonisées.

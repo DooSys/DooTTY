@@ -70,6 +70,10 @@ try {
           });
           return id;
         }
+        if (command === "monitoring_snapshot" && window.stoppedSession === args.sessionId)
+          throw new Error("MONITOR_DISTRIBUTION_STOPPED");
+        if (command === "write_session" && window.failedInput === args.sessionId)
+          throw new Error("Session closed");
         if (command === "monitoring_snapshot") return {
           cpuTotal:1000,cpuIdle:500,memoryTotal:8*1024**3,memoryAvailable:5*1024**3,
           swapTotal:0,swapFree:0,uptime:100,user:"developer",hostname:"linux-host",kernel:"6.18.54.1-microsoft-standard-WSL2",
@@ -511,9 +515,63 @@ try {
   await page.locator('#monitor-pause').click();
   await page.waitForFunction(()=>document.querySelector('#monitor-host-available').classList.contains('host-full'));
   assert.match(await page.locator('#monitor-host-available').innerText(), /^0 /);
+  // A WSL restart ends a PTY even though the app remains usable. Recovery is
+  // local to the affected tab, persists after dismissing global notices, and
+  // preserves both its buffer and profile when opening the replacement.
+  const interruptedId = await page.evaluate(() => window.next);
+  const launchCount = await page.evaluate(()=>window.calls.filter(c=>c.command==='start_session').length);
+  const interruptedKey = await page.locator('.session-tab.active').getAttribute('data-tab');
+  const originalProfile = await page.evaluate(id => window.launchProfiles[id], interruptedId);
+  await page.evaluate(id => window.sessions[id].onmessage({kind:'exit', code:1, error:'WSL connection lost'}), interruptedId);
+  const recovery = page.locator(`#${interruptedKey} .session-recovery`);
+  await recovery.waitFor({state:'visible'});
+  assert.match(await recovery.innerText(), /WSL connection lost/);
+  assert.equal(await page.locator('#monitoring').isVisible(), true);
+  assert.equal(await page.locator('#monitoring').evaluate(node=>node.classList.contains('stale')), true);
+  await page.evaluate(() => document.querySelector('#notice-close').click());
+  assert.equal(await recovery.isVisible(), true);
+  assert.equal(await page.evaluate(()=>window.calls.filter(c=>c.command==='start_session').length),launchCount);
+  await page.locator(`#${interruptedKey} .xterm-helper-textarea`).focus();
+  before = await writes();
+  await page.keyboard.type('never sent');
+  assert.equal(await writes(), before);
+  const oldBuffer = await page.locator(`#${interruptedKey} .xterm-rows`).textContent();
+  await recovery.locator('button').click();
+  await page.waitForFunction(id => window.next > id, interruptedId);
+  await page.locator('.session-tab.active[data-state=connected]').waitFor();
+  assert.deepEqual(await page.evaluate(()=>window.launchProfiles[window.next]), originalProfile);
+  assert.equal(await page.locator(`#${interruptedKey} .xterm-rows`).textContent(), oldBuffer);
+  assert.equal(await page.locator('#monitoring').isVisible(), true);
+  assert.equal(await page.locator('.terminal-pane:not([hidden]) .session-recovery').isVisible(), false);
+  before = await writes();
+  await page.keyboard.type('replacement works');
+  await page.waitForFunction(count=>window.calls.filter(c=>c.command==='write_session').length>count,before);
+  // Input transport failures also expose recovery, without waiting for Exit.
+  await page.evaluate(()=>{window.failedInput=window.next;});
+  await page.keyboard.type('x');
+  await page.locator('.terminal-pane:not([hidden]) .session-recovery').waitFor({state:'visible'});
+  assert.match(await page.locator('.terminal-pane:not([hidden]) .session-recovery').innerText(), /Session closed/);
+  await page.locator('.terminal-pane:not([hidden]) .session-recovery button').click();
+  await page.locator('.session-tab.active[data-state=connected]').waitFor();
+  // An explicit stopped-distribution result is actionable even when a delayed
+  // ConPTY Exit event has not arrived. It must not resume polling the dead PTY.
+  const stoppedId = await page.evaluate(()=>window.next);
+  await page.evaluate(()=>{window.stoppedSession=window.next;});
+  await page.locator('#monitor-pause').click();
+  await page.locator('#monitor-pause').click();
+  await page.locator('.terminal-pane:not([hidden]) .session-recovery').waitFor({state:'visible'});
+  const probes = await page.evaluate(id=>window.calls.filter(c=>c.command==='monitoring_snapshot' && c.args.sessionId===id).length, stoppedId);
+  await page.waitForTimeout(2200);
+  assert.equal(await page.evaluate(id=>window.calls.filter(c=>c.command==='monitoring_snapshot' && c.args.sessionId===id).length,stoppedId),probes);
+  assert.equal(await page.locator('#monitoring').isVisible(),true);
+  await page.locator('.terminal-pane:not([hidden]) .session-recovery button').click();
+  await page.locator('.session-tab.active[data-state=connected]').waitFor();
+  await page.evaluate(()=>window.sessions[window.next].onmessage({kind:'exit',code:0,error:null}));
+  await page.locator('.terminal-pane:not([hidden]) .session-recovery').waitFor({state:'visible'});
+  assert.equal(await page.locator('.session-tab.active').getAttribute('data-state'),'exited');
   assert.deepEqual(errors, []);
   console.log(
-    "PASS: profile CRUD/default/persistence, modal combo, tab rename/duplicate, read-only input/paste blocking and live output/copy, editable full paste preview/cancel/confirm, settings save state, chrome context menus, storage cards, ConPTY cursor after clearing history, palette, export, clear and close-others confirmation.",
+    "PASS: profile CRUD/default/persistence, modal combo, tab rename/duplicate, read-only input/paste blocking and live output/copy, editable full paste preview/cancel/confirm, settings save state, chrome context menus, storage cards, ConPTY cursor after clearing history, palette, export, clear, close-others confirmation, WSL exit/write-failure/stopped recovery and stale monitoring.",
   );
 } finally {
   await browser?.close();
