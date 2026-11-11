@@ -210,9 +210,34 @@ kbd {
   height: 100%;
 }
 .terminal-pane {
+  display: flex;
+  flex-direction: column;
   background: var(--terminal-background, var(--canvas, #0c0c0c));
 }
-.terminal-pane > .xterm {
+.terminal-screen {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.session-recovery {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 10px 12px;
+  flex-shrink: 0;
+  background: var(--warning-surface, #422d23);
+  color: var(--warning, #ffd1b5);
+}
+.session-recovery small {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  max-height: 80px;
+  overflow: auto;
+}
+.session-recovery button { margin-left: auto; flex-shrink: 0; }
+.terminal-screen > .xterm {
   /* FitAddon subtracts xterm's padding, not its parent's padding. */
   padding: 8px 6px 4px 8px;
 }

@@ -238,12 +238,13 @@
     "connected": "Session WSL connectée",
     "ended": "Session terminée",
     "connectionFailed": "Connexion impossible",
-    "unexpectedExit": "WSL a quitté avec une erreur. Le diagnostic reste affiché dans cet onglet.",
     "stillConnecting": "Un terminal est encore en connexion. Relancez-le après sa déconnexion.",
     "restartFailed": "La relance du terminal {{distribution}} a échoué.",
     "limit": "Impossible d’ouvrir un terminal supplémentaire (limite de 32 onglets).",
     "preview": "DooTTY — aperçu navigateur",
-    "previewHint": "Lancez DooTTY.exe sous Windows pour ouvrir WSL."
+    "previewHint": "Lancez DooTTY.exe sous Windows pour ouvrir WSL.",
+    "recoveryMessage": "Cette session est terminée ou interrompue. Son contenu reste consultable.",
+    "openReplacement": "Ouvrir une nouvelle console"
   },
   "select": {
     "choose": "Choisir"

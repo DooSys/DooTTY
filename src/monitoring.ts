@@ -4,7 +4,7 @@ import { formatBytes } from './settings';
 import { currentLanguage, onLanguageChanged, t } from './i18n';
 import { HISTORY_MS, measure, retainHistory, storageFilesystems, filesystemUsage, type Measurement, type Snapshot } from './monitoring-model';
 
-type Target = { sessionId: number; distribution: string; username: string | null };
+type Target = { sessionId: number; distribution: string; username: string | null; inactive?: boolean };
 type History = { snapshot?: Snapshot; points: Measurement[] };
 const paths = {
   cpu: 'M6 6h12v12H6z M9 9h6v6H9z M9 2v4m6-4v4M9 18v4m6-4v4M2 9h4m-4 6h4m12-6h4m-4 6h4',
@@ -20,7 +20,7 @@ function icon(path: string, filled = false): SVGSVGElement {
   p.setAttribute('d',path); p.setAttribute('fill',filled?'currentColor':'none'); p.setAttribute('stroke',filled?'none':'currentColor'); p.setAttribute('stroke-width','1.5');
   svg.append(p); return svg;
 }
-export function initializeMonitoring(options: { native: boolean; target: () => Target | null; resize: () => void; error: (error: unknown) => void }): { sync: () => void } {
+export function initializeMonitoring(options: { native: boolean; target: () => Target | null; resize: () => void; error: (error: unknown) => void; stopped: (sessionId: number) => void }): { sync: () => void } {
   const panel = document.getElementById('monitoring')!;
   const toggle = document.getElementById('monitor-toggle') as HTMLButtonElement;
   const pause = document.getElementById('monitor-pause') as HTMLButtonElement;
@@ -74,10 +74,10 @@ export function initializeMonitoring(options: { native: boolean; target: () => T
     panel.classList.toggle('expanded',expanded); toggle.setAttribute('aria-expanded',String(expanded));
     toggle.title=t(expanded?'monitor.collapse':'monitor.expand'); toggle.setAttribute('aria-label',toggle.title);
     pause.replaceChildren(icon(paused?'M7 4l13 8-13 8z':'M6 4h4v16H6zM14 4h4v16h-4z',true)); pause.title=t(paused?'monitor.resume':'monitor.pause'); pause.setAttribute('aria-label',pause.title); pause.setAttribute('aria-pressed',String(paused));
-    status.hidden = !paused && !error && !stopped.has(target.sessionId);
-    status.textContent=stopped.has(target.sessionId)?t('monitor.stopped'):paused?t('monitor.paused'):error?t('monitor.unavailable'):''; status.title=error??'';
+    status.hidden = !paused && !error && !(target.inactive || stopped.has(target.sessionId));
+    status.textContent=target.inactive?t('tabs.ended'):stopped.has(target.sessionId)?t('monitor.stopped'):paused?t('monitor.paused'):error?t('monitor.unavailable'):''; status.title=error??'';
     const history=histories.get(key(target)); const snapshot=history?.snapshot; const point=history?.points.at(-1);
-    panel.classList.toggle('stale',paused || !!error || !point || Date.now()-point.at>8000);
+    panel.classList.toggle('stale',target.inactive || paused || !!error || !point || Date.now()-point.at>8000);
     identity.textContent=snapshot?`${snapshot.user}@${snapshot.hostname}\n${snapshot.kernel}\n${t('monitor.uptime',{value:Math.floor(snapshot.uptime/3600).toLocaleString(currentLanguage())})}`:'';
     for(const row of rows) {
       row.label.textContent=t(`monitor.${row.name}`); row.row.title=row.label.textContent;
@@ -143,22 +143,32 @@ export function initializeMonitoring(options: { native: boolean; target: () => T
   async function sample(): Promise<void> {
     clearTimeout(timer);
     const target=options.target();
-    if(!target || stopped.has(target.sessionId) || paused || document.hidden || !options.native || loading) { render(); return; }
+    if(!target || target.inactive || stopped.has(target.sessionId) || paused || document.hidden || !options.native || loading) { render(); return; }
     loading=true; render();
     try {
       const snapshot=await invoke<Snapshot>('monitoring_snapshot',{sessionId:target.sessionId});
       const current=options.target();
-      if(current?.sessionId!==target.sessionId) return;
+      if(current?.sessionId!==target.sessionId || current.inactive) return;
       const id=key(target), history=histories.get(id)??{points:[]};
       const point=measure(snapshot,history.snapshot,Date.now());
       history.points=retainHistory(history.points,point); history.snapshot=snapshot;
       histories.delete(id); histories.set(id,history);
       if(histories.size>32) histories.delete(histories.keys().next().value!);
       error=null;
-    } catch(reason) { if(options.target()?.sessionId===target.sessionId) { error=String(reason); if(error.includes('MONITOR_DISTRIBUTION_STOPPED')) { stopped.add(target.sessionId); if(stopped.size>32) stopped.delete(stopped.values().next().value!); } } }
+    } catch(reason) {
+      const current = options.target();
+      if(current?.sessionId === target.sessionId && !current.inactive) {
+        error = String(reason);
+        if(error.includes('MONITOR_DISTRIBUTION_STOPPED')) {
+          stopped.add(target.sessionId);
+          if(stopped.size > 32) stopped.delete(stopped.values().next().value!);
+          options.stopped(target.sessionId);
+        }
+      }
+    }
     finally {
       loading=false; render();
-      if(options.target() && !stopped.has(options.target()!.sessionId) && !paused && !document.hidden) timer=setTimeout(()=>void sample(),2000);
+      if(options.target() && !options.target()!.inactive && !stopped.has(options.target()!.sessionId) && !paused && !document.hidden) timer=setTimeout(()=>void sample(),2000);
     }
   }
   function sync(): void {
